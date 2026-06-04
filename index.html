@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metronomo Calibrato per Ipertrofia</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a1e;
+            --text-main: #ffffff;
+            --text-muted: #a0a0aa;
+            --accent-primary: #3b82f6;
+            
+            /* Colori dinamici delle fasi */
+            --color-ready: #71717a;
+            --color-countdown: #f59e0b;
+            --color-concentric: #ef4444;
+            --color-eccentric: #06b6d4;
+            --color-pause: #10b981;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 25px;
+            color: var(--text-main);
+            letter-spacing: 0.5px;
+        }
+
+        /* Schermo Display Principale */
+        .display-card {
+            background-color: #27272a;
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            transition: all 0.2s ease;
+            border-left: 8px solid var(--color-ready);
+        }
+
+        .state-ready { border-color: var(--color-ready); }
+        .state-countdown { border-color: var(--color-countdown); }
+        .state-concentric { border-color: var(--color-concentric); }
+        .state-eccentric { border-color: var(--color-eccentric); }
+        .state-pause { border-color: var(--color-pause); }
+
+        #phase-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            color: var(--text-muted);
+        }
+
+        #timer-display {
+            font-size: 4.5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 15px;
+        }
+
+        .reps-box {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-main);
+            background-color: rgba(255, 255, 255, 0.05);
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+        }
+
+        #reps-display {
+            color: var(--accent-primary);
+            font-weight: 800;
+        }
+
+        /* Pannello di Controllo */
+        .controls-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        btn {
+            flex: 1;
+            border: none;
+            padding: 15px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        btn:active {
+            transform: scale(0.98);
+        }
+
+        #playBtn {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+
+        #playBtn.running {
+            background-color: #e11d48;
+        }
+
+        #resetBtn {
+            background-color: #3f3f46;
+            color: white;
+        }
+
+        /* Configurazione Sliders */
+        .slider-group {
+            margin-bottom: 18px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .slider-label span input-val {
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 6px;
+            background: #3f3f46;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Tempo Metronome</h1>
+
+    <!-- Display Visivo dello Stato Corrente -->
+    <div id="display-card" class="display-card state-ready">
+        <div id="phase-title">Pronto</div>
+        <div id="timer-display">--</div>
+        <div class="reps-box">Ripetizioni: <span id="reps-display">0</span></div>
+    </div>
+
+    <!-- Pulsanti di Esecuzione -->
+    <div class="controls-row">
+        <button id="playBtn" onclick="toggleMetronome()">Play</button>
+        <button id="resetBtn" onclick="resetMetronome()">Reset</button>
+    </div>
+
+    <!-- Configurazione Tempi (Impostazioni Richieste) -->
+    <div class="slider-container">
+        <div class="slider-group">
+            <div class="slider-label"><span>Countdown Avvio</span><span class="input-val" id="val-countdown">5s</span></div>
+            <input type="range" id="countdown" min="2" max="10" value="5" oninput="updateSliderLabel('countdown', this.value)">
+        </div>
+        <hr style="border: 0; height: 1px; background: #27272a; margin: 20px 0;">
+        <div class="slider-group">
+            <div class="slider-label"><span>Fase Concentrica (Salita)</span><span class="input-val" id="val-concentric">1s</span></div>
+            <input type="range" id="concentric" min="0" max="3" value="1" oninput="updateSliderLabel('concentric', this.value)">
+        </div>
+        <div class="slider-group">
+            <div class="slider-label"><span>Pausa Isometrica Alta (Contrazione)</span><span class="input-val" id="val-topPause">0s</span></div>
+            <input type="range" id="topPause" min="0" max="3" value="0" oninput="updateSliderLabel('topPause', this.value)">
+        </div>
+        <div class="slider-group">
+            <div class="slider-label"><span>Fase Eccentrica (Discesa)</span><span class="input-val" id="val-eccentric">2s</span></div>
+            <input type="range" id="eccentric" min="0" max="3" value="2" oninput="updateSliderLabel('eccentric', this.value)">
+        </div>
+        <div class="slider-group">
+            <div class="slider-label"><span>Pausa Isometrica Bassa (Allungamento)</span><span class="input-val" id="val-bottomPause">0s</span></div>
+            <input type="range" id="bottomPause" min="0" max="3" value="0" oninput="updateSliderLabel('bottomPause', this.value)">
+        </div>
+    </div>
+</div>
+
+<script>
+    // Stato dell'applicazione
+    let isRunning = false;
+    let timerInterval = null;
+    let currentState = 'NOT_STARTED'; // NOT_STARTED, COUNTDOWN, CONCENTRIC, TOP_PAUSE, ECCENTRIC, BOTTOM_PAUSE
+    let currentSecondsRemaining = 0;
+    let reps = 0;
+    let audioCtx = null;
+
+    // Sincronizzazione dinamica delle label degli slider
+    function updateSliderLabel(id, val) {
+        document.getElementById(`val-${id}`).innerText = val + 's';
+    }
+
+    // Inizializzazione sicura dell'Audio Context per i browser mobile
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    // Generatore di impulsi sonori (Web Audio API) accurati e puliti
+    function playTick(state) {
+        if (state === 'TOP_PAUSE' || state === 'BOTTOM_PAUSE') return; // Silenzio assoluto nelle pause
+
+        let frequency = 440; // Default tono medio per il countdown
+        if (state === 'CONCENTRIC') frequency = 880; // Tono Acuto
+        if (state === 'ECCENTRIC') frequency = 330;  // Tono Grave
+
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        
+        // Curva di decadimento esponenziale rapida per un "click" secco senza distorsioni
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+    }
+
+    // Aggiornamento grafico della UI (Testi e Classi CSS)
+    function updateUI() {
+        const card = document.getElementById('display-card');
+        const title = document.getElementById('phase-title');
+        const display = document.getElementById('timer-display');
+
+        card.className = 'display-card'; // Reset
+
+        switch(currentState) {
+            case 'COUNTDOWN':
+                card.classList.add('state-countdown');
+                title.innerText = "Preparati";
+                display.innerText = currentSecondsRemaining;
+                break;
+            case 'CONCENTRIC':
+                card.classList.add('state-concentric');
+                title.innerText = "Concentrica (Sali)";
+                display.innerText = currentSecondsRemaining;
+                break;
+            case 'TOP_PAUSE':
+                card.classList.add('state-pause');
+                title.innerText = "Pausa Isometrica Alta";
+                display.innerText = currentSecondsRemaining;
+                break;
+            case 'ECCENTRIC':
+                card.classList.add('state-eccentric');
+                title.innerText = "Eccentrica (Scendi)";
+                display.innerText = currentSecondsRemaining;
+                break;
+            case 'BOTTOM_PAUSE':
+                card.classList.add('state-pause');
+                title.innerText = "Pausa Isometrica Bassa";
+                display.innerText = currentSecondsRemaining;
+                break;
+        }
+    }
+
+    // Macchina a stati finiti: gestisce il passaggio matematico da una fase all'altra
+    function advancePhase() {
+        const conc = parseInt(document.getElementById('concentric').value);
+        const topP = parseInt(document.getElementById('topPause').value);
+        const ecc = parseInt(document.getElementById('eccentric').value);
+        const botP = parseInt(document.getElementById('bottomPause').value);
+
+        // Controllo di sicurezza anti-loop infinito se l'utente azzera tutto
+        if (conc === 0 && ecc === 0 && topP === 0 && botP === 0) {
+            resetMetronome();
+            alert("Imposta almeno una fase del movimento maggiore di 0 secondi.");
+            return;
+        }
+
+        if (currentState === 'NOT_STARTED') {
+            currentState = 'COUNTDOWN';
+            currentSecondsRemaining = parseInt(document.getElementById('countdown').value);
+            return;
+        }
+
+        if (currentState === 'COUNTDOWN') {
+            if (conc > 0) { currentState = 'CONCENTRIC'; currentSecondsRemaining = conc; }
+            else if (topP > 0) { currentState = 'TOP_PAUSE'; currentSecondsRemaining = topP; }
+            else if (ecc > 0) { currentState = 'ECCENTRIC'; currentSecondsRemaining = ecc; }
+            else if (botP > 0) { currentState = 'BOTTOM_PAUSE'; currentSecondsRemaining = botP; }
+            return;
+        }
+
+        if (currentState === 'CONCENTRIC') {
+            // La ripetizione si chiude esattamente alla fine della contrazione concentrica
+            reps++;
+            document.getElementById('reps-display').innerText = reps;
+
+            if (topP > 0) { currentState = 'TOP_PAUSE'; currentSecondsRemaining = topP; }
+            else if (ecc > 0) { currentState = 'ECCENTRIC'; currentSecondsRemaining = ecc; }
+            else if (botP > 0) { currentState = 'BOTTOM_PAUSE'; currentSecondsRemaining = botP; }
+            else if (conc > 0) { currentState = 'CONCENTRIC'; currentSecondsRemaining = conc; }
+            return;
+        }
+
+        if (currentState === 'TOP_PAUSE') {
+            if (ecc > 0) { currentState = 'ECCENTRIC'; currentSecondsRemaining = ecc; }
+            else if (botP > 0) { currentState = 'BOTTOM_PAUSE'; currentSecondsRemaining = botP; }
+            else if (conc > 0) { currentState = 'CONCENTRIC'; currentSecondsRemaining = conc; }
+            else if (topP > 0) { currentState = 'TOP_PAUSE'; currentSecondsRemaining = topP; }
+            return;
+        }
+
+        if (currentState === 'ECCENTRIC') {
+            if (botP > 0) { currentState = 'BOTTOM_PAUSE'; currentSecondsRemaining = botP; }
+            else if (conc > 0) { currentState = 'CONCENTRIC'; currentSecondsRemaining = conc; }
+            else if (topP > 0) { currentState = 'TOP_PAUSE'; currentSecondsRemaining = topP; }
+            else if (ecc > 0) { currentState = 'ECCENTRIC'; currentSecondsRemaining = ecc; }
+            return;
+        }
+
+        if (currentState === 'BOTTOM_PAUSE') {
+            if (conc > 0) { currentState = 'CONCENTRIC'; currentSecondsRemaining = conc; }
+            else if (topP > 0) { currentState = 'TOP_PAUSE'; currentSecondsRemaining = topP; }
+            else if (ecc > 0) { currentState = 'ECCENTRIC'; currentSecondsRemaining = ecc; }
+            else if (botP > 0) { currentState = 'BOTTOM_PAUSE'; currentSecondsRemaining = botP; }
+            return;
+        }
+    }
+
+    // Il motore del clock: esegue le verifiche all'inizio di ogni secondo reale
+    function tick() {
+        if (currentSecondsRemaining <= 0) {
+            advancePhase();
+        }
+
+        // Suona ed esegue l'aggiornamento visivo all'istante iniziale della fase
+        playTick(currentState);
+        updateUI();
+
+        // Decrementa il secondo interno alla fase attuale per lo step successivo
+        currentSecondsRemaining--;
+    }
+
+    // Gestore del tasto Play/Stop (Pausa interattiva senza perdita dati)
+    function toggleMetronome() {
+        initAudio();
+        const btn = document.getElementById('playBtn');
+
+        if (isRunning) {
+            clearInterval(timerInterval);
+            isRunning = false;
+            btn.innerText = 'Play';
+            btn.classList.remove('running');
+        } else {
+            isRunning = true;
+            btn.innerText = 'Stop';
+            btn.classList.add('running');
+
+            if (currentState === 'NOT_STARTED') {
+                advancePhase();
+            }
+
+            // Innesco immediato a t=0 per eliminare lo sfasamento audio/grafica
+            tick();
+            timerInterval = setInterval(tick, 1000);
+        }
+    }
+
+    // Reset totale del sistema (ripristina lo stato vergine mantenendo le configurazioni degli slider)
+    function resetMetronome() {
+        clearInterval(timerInterval);
+        isRunning = false;
+        currentState = 'NOT_STARTED';
+        currentSecondsRemaining = 0;
+        reps = 0;
+        
+        const btn = document.getElementById('playBtn');
+        btn.innerText = 'Play';
+        btn.classList.remove('running');
+        
+        document.getElementById('reps-display').innerText = '0';
+        document.getElementById('timer-display').innerText = '--';
+        document.getElementById('phase-title').innerText = 'Pronto';
+        document.getElementById('display-card').className = 'display-card state-ready';
+    }
+</script>
+
+</body>
+</html>
