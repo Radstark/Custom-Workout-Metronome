@@ -169,8 +169,6 @@
             stroke-linecap: round;
             stroke-dasharray: 376.9; /* 2 * PI * 60 */
             stroke-dashoffset: 0;
-            transform: rotate(-90deg);
-            transform-origin: 75px 75px; /* Ruota solo la barra di progresso sul suo asse */
             transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
         }
         
@@ -178,7 +176,9 @@
         #timer-display {
             font-size: 3.5rem;
             font-weight: 900;
-            fill: var(--text-main); /* Nei tag SVG si usa fill al posto di color */
+            fill: var(--text-main);
+            text-anchor: middle;
+            dominant-baseline: central;
         }
         
         #phase-title {
@@ -187,6 +187,8 @@
             text-transform: uppercase;
             fill: var(--text-muted);
             letter-spacing: 0.5px;
+            text-anchor: middle;
+            dominant-baseline: middle;
         }
         
         .piston-box { display: flex; flex-direction: column; align-items: center; height: 140px; width: 60px; }
@@ -293,10 +295,11 @@
             <div class="circle-box">
                 <svg viewBox="0 0 150 150" width="100%" height="100%">
                     <circle class="circle-bg" cx="75" cy="75" r="60"></circle>
-                    <circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="60"></circle>
+                    
+                    <circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="60" transform="rotate(-90 75 75)"></circle>
                     
                     <text id="timer-display" x="75" y="75" dominant-baseline="central" text-anchor="middle">--</text>
-                    <text id="phase-title" x="75" y="110" text-anchor="middle">Ready</text>
+                    <text id="phase-title" x="75" y="112" text-anchor="middle">Ready</text>
                 </svg>
             </div>
             <div class="piston-box">
