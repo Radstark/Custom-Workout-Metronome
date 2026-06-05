@@ -144,6 +144,7 @@
             margin-bottom: 20px;
             border: 1px solid #334155;
         }
+        
         /* Struttura fluida e quadrata */
         .circle-box {
             position: relative;
@@ -257,13 +258,9 @@
                 width: 180px;
                 height: 180px;
             }
-            .circle-box svg {
-                width: 170px;
-                height: 170px;
-                transform: rotate(-90deg) scale(1.13);
-            }
+            /* Eliminata la sovrascrittura distruttiva di .circle-box svg che causava la rotazione */
             #timer-display {
-                font-size: 3.8rem; /* Scaliamo solo il font in proporzione */
+                font-size: 3.8rem;
             }
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
@@ -611,7 +608,6 @@
         }
         if (currentState === 'BOTTOM_PAUSE') { handleEndRep(); return; }
         
-        // Quando finisce il riposo del set o dell'arto, si riparte DIRETTAMENTE senza tasti intermedi
         if (currentState === 'SET_REST' || currentState === 'LIMB_REST') {
             goToPhase('CONCENTRIC', ex.conc);
             return;
@@ -643,7 +639,7 @@
             if (ex.limbRest > 0) {
                 goToPhase('LIMB_REST', ex.limbRest);
             } else {
-                goToPhase('CONCENTRIC', ex.conc); // Nessun rest arto? Parte subito il destro
+                goToPhase('CONCENTRIC', ex.conc);
             }
         } else {
             currentSetIdx++;
@@ -651,7 +647,6 @@
                 if (ex.setRest > 0) goToPhase('SET_REST', ex.setRest);
                 else startNextSetDirectly();
             } else {
-                // Esercizio concluso. Passaggio a quello successivo
                 currentExIdx++;
                 if (currentExIdx < routine.length) {
                     currentSetIdx = 0;
@@ -660,7 +655,7 @@
                     actualReps = 0;
                     
                     if (ex.setRest > 0) {
-                        goToPhase('SET_REST', ex.setRest); // Sfrutta il rest dell'ultimo set per preparare il nuovo esercizio
+                        goToPhase('SET_REST', ex.setRest);
                     } else {
                         startNextSetDirectly();
                     }
@@ -682,7 +677,6 @@
         currentSecondsRemaining = phaseTotalSeconds;
         currentPhaseId++; 
 
-        // Gestione dei tempi a zero interni alle rep
         if (duration === 0 && (currentState === 'CONCENTRIC' || currentState === 'TOP_PAUSE' || currentState === 'ECCENTRIC' || currentState === 'BOTTOM_PAUSE')) {
             advanceStateLogic();
         }
@@ -696,7 +690,6 @@
     }
 
     function manualNextSet() {
-        // Permette di saltare i tempi di recupero (Limb o Set Rest) se ci si sente pronti prima
         if(currentState === 'SET_REST' || currentState === 'LIMB_REST') {
             currentSecondsRemaining = 0;
             advanceStateLogic();
