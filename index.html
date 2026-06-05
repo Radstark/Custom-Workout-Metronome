@@ -144,23 +144,24 @@
             margin-bottom: 20px;
             border: 1px solid #334155;
         }
+        /* Struttura fluida e quadrata */
         .circle-box {
             position: relative;
-            width: 150px;
-            height: 150px;
+            width: 160px;
+            height: 160px;
             display: flex;
             justify-content: center;
             align-items: center;
         }
         .circle-box svg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            transform: rotate(-90deg);
-            width: 150px;
-            height: 150px;
+            width: 100%;
+            height: 100%;
         }
-        .circle-bg { fill: none; stroke: #1e293b; stroke-width: 8; }
+        .circle-bg { 
+            fill: none; 
+            stroke: #1e293b; 
+            stroke-width: 8; 
+        }
         .circle-progress {
             fill: none;
             stroke: var(--color-idle);
@@ -168,10 +169,25 @@
             stroke-linecap: round;
             stroke-dasharray: 376.9; /* 2 * PI * 60 */
             stroke-dashoffset: 0;
+            transform: rotate(-90deg);
+            transform-origin: 75px 75px; /* Ruota solo la barra di progresso sul suo asse */
             transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
         }
-        #timer-display { font-size: 3.5rem; font-weight: 900; line-height: 1; }
-        #phase-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); text-align: center; margin-top: 6px;}
+        
+        /* Stili del testo interno SVG */
+        #timer-display {
+            font-size: 3.5rem;
+            font-weight: 900;
+            fill: var(--text-main); /* Nei tag SVG si usa fill al posto di color */
+        }
+        
+        #phase-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            fill: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
         
         .piston-box { display: flex; flex-direction: column; align-items: center; height: 140px; width: 60px; }
         .piston-track { width: 14px; height: 110px; background: #1e293b; border-radius: 6px; position: relative; border: 1px solid #334155; }
@@ -236,15 +252,17 @@
                 gap: 10px;
             }
             .circle-box {
-                width: 170px;
-                height: 170px;
+                width: 180px;
+                height: 180px;
             }
             .circle-box svg {
                 width: 170px;
                 height: 170px;
                 transform: rotate(-90deg) scale(1.13);
             }
-            #timer-display { font-size: 4rem; }
+            #timer-display {
+                font-size: 3.8rem; /* Scaliamo solo il font in proporzione */
+            }
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
         }
@@ -273,11 +291,13 @@
 
         <div class="dashboard">
             <div class="circle-box">
-                <svg><circle class="circle-bg" cx="75" cy="75" r="60"></circle><circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="60"></circle></svg>
-                <div style="z-index:10; text-align:center;">
-                    <div id="timer-display">--</div>
-                    <div id="phase-title">Ready</div>
-                </div>
+                <svg viewBox="0 0 150 150" width="100%" height="100%">
+                    <circle class="circle-bg" cx="75" cy="75" r="60"></circle>
+                    <circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="60"></circle>
+                    
+                    <text id="timer-display" x="75" y="75" dominant-baseline="central" text-anchor="middle">--</text>
+                    <text id="phase-title" x="75" y="110" text-anchor="middle">Ready</text>
+                </svg>
             </div>
             <div class="piston-box">
                 <div class="piston-track"><div id="piston-weight" class="piston-weight"></div></div>
@@ -741,7 +761,7 @@
             
             void ring.offsetHeight; 
             void piston.offsetHeight;
-
+        
             if (isRunning) {
                 ring.style.transition = 'stroke-dashoffset 1s linear, stroke 0.3s ease';
                 piston.style.transition = 'bottom 1s linear, background 0.3s ease';
