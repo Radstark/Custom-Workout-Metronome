@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tempo Metronome - Routine Tracker</title>
     <style>
         :root {
@@ -27,7 +27,7 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
-            padding: 15px;
+            padding: 10px;
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -42,7 +42,7 @@
             border-radius: 24px;
             padding: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            margin-bottom: 30px;
+            box-sizing: border-box;
         }
 
         h1, h2 {
@@ -67,59 +67,69 @@
         }
         .remove-btn {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 12px;
+            right: 12px;
             background: #ef4444;
             color: white;
             border: none;
             border-radius: 6px;
-            padding: 4px 8px;
+            padding: 6px 10px;
             cursor: pointer;
             font-size: 0.8rem;
+            font-weight: bold;
+            z-index: 5;
         }
         .form-group {
             margin-bottom: 10px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 5px;
         }
-        .form-row {
-            display: flex;
-            gap: 10px;
+        .form-grid-2x2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
             margin-bottom: 10px;
         }
-        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        .form-grid-4x1 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
         label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
         input, select {
             background: #334155;
             border: 1px solid #475569;
             color: white;
-            padding: 8px 12px;
+            padding: 10px 12px;
             border-radius: 8px;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             outline: none;
+            width: 100%;
+            box-sizing: border-box;
         }
-        input[type="number"] { width: 100%; box-sizing: border-box; }
         
         .action-btn {
             background-color: var(--accent);
             color: white;
             border: none;
-            padding: 12px;
-            border-radius: 10px;
+            padding: 14px;
+            border-radius: 12px;
             font-weight: 700;
             cursor: pointer;
             text-transform: uppercase;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .add-ex-btn { background-color: #475569; }
-        .start-workout-btn { background-color: var(--success); margin-top: 10px; }
+        .start-workout-btn { background-color: var(--success); margin-top: 10px; padding: 16px; font-size: 1.05rem; }
 
         /* WORKOUT PLAYER */
         .dashboard {
             background-color: #0f172a;
             border-radius: 20px;
-            padding: 20px 10px;
+            padding: 25px 15px;
             display: flex;
             justify-content: space-around;
             align-items: center;
@@ -128,8 +138,8 @@
         }
         .circle-box {
             position: relative;
-            width: 140px;
-            height: 140px;
+            width: 150px;
+            height: 150px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -139,8 +149,8 @@
             top: 0;
             left: 0;
             transform: rotate(-90deg);
-            width: 140px;
-            height: 140px;
+            width: 150px;
+            height: 150px;
         }
         .circle-bg { fill: none; stroke: #1e293b; stroke-width: 8; }
         .circle-progress {
@@ -152,44 +162,94 @@
             stroke-dashoffset: 0;
             transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
         }
-        #timer-display { font-size: 3rem; font-weight: 900; line-height: 1; }
-        #phase-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); text-align: center; margin-top: 4px;}
+        #timer-display { font-size: 3.5rem; font-weight: 900; line-height: 1; }
+        #phase-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); text-align: center; margin-top: 6px;}
         
         .piston-box { display: flex; flex-direction: column; align-items: center; height: 140px; width: 60px; }
-        .piston-track { width: 12px; height: 110px; background: #1e293b; border-radius: 6px; position: relative; border: 1px solid #334155; }
-        .piston-weight { width: 30px; height: 14px; background: var(--color-idle); border-radius: 4px; position: absolute; left: -10px; bottom: 0%; transition: bottom 1s linear, background 0.3s ease; }
+        .piston-track { width: 14px; height: 110px; background: #1e293b; border-radius: 6px; position: relative; border: 1px solid #334155; }
+        .piston-weight { width: 32px; height: 16px; background: var(--color-idle); border-radius: 4px; position: absolute; left: -9px; bottom: 0%; transition: bottom 1s linear, background 0.3s ease; }
         
         .status-panel {
             background: rgba(15, 23, 42, 0.4);
             border-radius: 16px;
-            padding: 15px;
+            padding: 16px;
             border: 1px solid #334155;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         .status-row { display: flex; justify-content: space-between; font-size: 0.95rem; }
         .status-row .label { color: var(--text-muted); font-weight: 600; }
         .status-row .val { font-weight: 700; }
         
-        .player-controls { display: flex; flex-direction: column; gap: 10px; }
-        .controls-row { display: flex; gap: 10px; width: 100%; }
+        .player-controls { display: flex; flex-direction: column; gap: 12px; }
+        .controls-row { display: flex; gap: 12px; width: 100%; }
         .controls-row button { flex: 1; }
         .btn-danger { background-color: #ef4444; }
         .btn-warning { background-color: var(--color-countdown); }
-        .btn-failure { background-color: #f59e0b; color: #0f172a; font-weight: 800; }
+        .btn-failure { background-color: #f59e0b; color: #0f172a; font-weight: 800; padding: 16px; }
 
         .share-box {
             background: #0f172a;
             border: 1px dashed #475569;
-            padding: 12px;
-            border-radius: 10px;
+            padding: 14px;
+            border-radius: 12px;
             text-align: center;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
             margin-top: 15px;
             cursor: pointer;
+        }
+
+        /* MEDIA QUERY RESPONSIVE COMPLETA PER SMARTPHONE */
+        @media (max-width: 480px) {
+            body {
+                padding: 0;
+                background-color: var(--bg-color);
+            }
+            .container {
+                border-radius: 0;
+                box-shadow: none;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                padding: 20px 16px;
+            }
+            .form-grid-2x2 {
+                grid-template-columns: 1fr; /* Sotto i 480px i dati principali respirano meglio in riga singola */
+                gap: 10px;
+            }
+            .form-grid-2x2 .form-group:nth-child(2), 
+            .form-grid-2x2 .form-group:nth-child(3) {
+                display: inline-grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            /* Gestione compatta accoppiata per Set e Reps su mobile */
+            .mobile-split-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+            .form-grid-4x1 {
+                grid-template-columns: repeat(2, 1fr); /* Diventa un comodo 2x2 per le dita */
+                gap: 10px;
+            }
+            .circle-box {
+                width: 170px;
+                height: 170px;
+            }
+            .circle-box svg {
+                width: 170px;
+                height: 170px;
+                transform: rotate(-90deg) scale(1.13);
+            }
+            #timer-display { font-size: 4rem; }
+            .dashboard { padding: 35px 15px; margin-bottom: 25px; }
+            .action-btn { padding: 16px; font-size: 1rem; }
         }
     </style>
 </head>
@@ -210,7 +270,7 @@
 
         <div class="dashboard">
             <div class="circle-box">
-                <svg><circle class="circle-bg" cx="70" cy="70" r="60"></circle><circle id="progress-ring" class="circle-progress" cx="70" cy="70" r="60"></circle></svg>
+                <svg><circle class="circle-bg" cx="75" cy="75" r="60"></circle><circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="60"></circle></svg>
                 <div style="z-index:10; text-align:center;">
                     <div id="timer-display">--</div>
                     <div id="phase-title">Ready</div>
@@ -313,34 +373,34 @@
                 <label>Exercise Name</label>
                 <input type="text" class="ex-name" value="${ex.name}" onchange="saveStateToURL()">
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Execution Type</label>
-                    <select class="ex-type" onchange="toggleLimbRestDOM(this); saveStateToURL();">
-                        <option value="bilateral" ${ex.type === 'bilateral' ? 'selected' : ''}>Bilateral (Single Set)</option>
-                        <option value="unilateral" ${ex.type === 'unilateral' ? 'selected' : ''}>Unilateral (One side at a time)</option>
-                    </select>
-                </div>
+            
+            <div class="form-group">
+                <label>Execution Type</label>
+                <select class="ex-type" onchange="toggleLimbRestDOM(this); saveStateToURL();">
+                    <option value="bilateral" ${ex.type === 'bilateral' ? 'selected' : ''}>Bilateral (Single Set)</option>
+                    <option value="unilateral" ${ex.type === 'unilateral' ? 'selected' : ''}>Unilateral (One side)</option>
+                </select>
+            </div>
+
+            <div class="mobile-split-row">
                 <div class="form-group">
                     <label>Total Sets</label>
                     <input type="number" class="ex-sets" value="${ex.sets}" min="1" onchange="saveStateToURL()">
                 </div>
                 <div class="form-group">
-                    <label>Target Reps (0 = To Failure)</label>
+                    <label>Target Reps (0=Fail)</label>
                     <input type="number" class="ex-reps" value="${ex.reps ?? 0}" min="0" onchange="saveStateToURL()">
                 </div>
             </div>
-            <div class="form-row">
+
+            <div class="form-grid-4x1">
                 <div class="form-group"><label>Conc (↑)</label><input type="number" class="ex-conc" value="${ex.conc}" min="0"></div>
                 <div class="form-group"><label>Iso High</label><input type="number" class="ex-topP" value="${ex.topP}" min="0"></div>
                 <div class="form-group"><label>Ecc (↓)</label><input type="number" class="ex-ecc" value="${ex.ecc}" min="0"></div>
                 <div class="form-group"><label>Iso Low</label><input type="number" class="ex-botP" value="${ex.botP}" min="0"></div>
             </div>
-            <div class="form-row">
-                <div class="form-group class-limb-rest ${ex.type === 'bilateral' ? 'hidden' : ''}">
-                    <label>Limb Rest (s)</label>
-                    <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}">
-                </div>
+
+            <div class="mobile-split-row">
                 <div class="form-group">
                     <label>Post-Set Rest (s)</label>
                     <input type="number" class="ex-setRest" value="${ex.setRest}" min="0">
@@ -349,6 +409,11 @@
                     <label>Countdown (s)</label>
                     <input type="number" class="ex-countdown" value="${ex.countdown || 5}" min="2">
                 </div>
+            </div>
+
+            <div class="form-group class-limb-rest ${ex.type === 'bilateral' ? 'hidden' : ''}">
+                <label>Limb Rest (seconds)</label>
+                <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}">
             </div>
         `;
         return div;
@@ -386,7 +451,7 @@
             topP: parseInt(card.querySelector('.ex-topP').value) || 0,
             ecc: parseInt(card.querySelector('.ex-ecc').value) || 0,
             botP: parseInt(card.querySelector('.ex-botP').value) || 0,
-            limbRest: parseInt(card.querySelector('.ex-limbRest').value) || 0,
+            limbRest: parseInt(card.querySelector('.ex-limbRest')?.value) || 0,
             setRest: parseInt(card.querySelector('.ex-setRest').value) || 0,
             countdown: parseInt(card.querySelector('.ex-countdown').value) || 5
         }));
@@ -434,22 +499,14 @@
     }
 
     function shouldPlayRestTick(sec) {
-        // 1. Final countdown (every second)
         if (sec <= 10 && sec >= 0) return true;
-        
-        // 2. Pre-warning tick at 15s
         if (sec === 15) return true;
-        
-        // 3. Critical window between 120s and 30s (inclusive): every 30 seconds
         if (sec <= 120 && sec >= 30) {
             return (sec % 30 === 0);
         }
-        
-        // 4. Above 120s: strictly on the minute mark (e.g., 180s, 240s)
         if (sec > 120) {
             return (sec % 60 === 0);
         }
-        
         return false;
     }
 
