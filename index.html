@@ -145,7 +145,6 @@
             border: 1px solid #334155;
         }
         
-        /* Struttura fluida e quadrata */
         .circle-box {
             position: relative;
             width: 160px;
@@ -168,14 +167,14 @@
             stroke: var(--color-idle);
             stroke-width: 10;
             stroke-linecap: round;
-            stroke-dasharray: 376.9; /* 2 * PI * 60 */
+            stroke-dasharray: 376.9;
             stroke-dashoffset: 0;
             transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
         }
         
-        /* Stili del testo interno SVG */
+        /* Font scalati millimetricamente sul viewBox 150x150 dell'SVG */
         #timer-display {
-            font-size: 3.5rem;
+            font-size: 44px; 
             font-weight: 900;
             fill: var(--text-main);
             text-anchor: middle;
@@ -183,13 +182,13 @@
         }
         
         #phase-title {
-            font-size: 0.75rem;
+            font-size: 11px; 
             font-weight: 700;
             text-transform: uppercase;
             fill: var(--text-muted);
             letter-spacing: 0.5px;
             text-anchor: middle;
-            dominant-baseline: middle;
+            dominant-baseline: central;
         }
         
         .piston-box { display: flex; flex-direction: column; align-items: center; height: 140px; width: 60px; }
@@ -258,10 +257,7 @@
                 width: 180px;
                 height: 180px;
             }
-            /* Eliminata la sovrascrittura distruttiva di .circle-box svg che causava la rotazione */
-            #timer-display {
-                font-size: 3.8rem;
-            }
+            /* Rimosso ogni ridimensionamento distruttivo del font. L'SVG scala nativamente in pixel */
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
         }
@@ -295,7 +291,7 @@
                     
                     <circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="60" transform="rotate(-90 75 75)"></circle>
                     
-                    <text id="timer-display" x="75" y="75" dominant-baseline="central" text-anchor="middle">--</text>
+                    <text id="timer-display" x="75" y="75" text-anchor="middle">--</text>
                     <text id="phase-title" x="75" y="112" text-anchor="middle">Ready</text>
                 </svg>
             </div>
@@ -502,7 +498,6 @@
         const ex = routine[currentExIdx];
         currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
         
-        // Inizializza il Countdown Unico Globale
         currentState = 'COUNTDOWN';
         phaseTotalSeconds = initialCountdownSeconds;
         currentSecondsRemaining = phaseTotalSeconds;
@@ -732,19 +727,20 @@
         const title = document.getElementById('phase-title');
         const piston = document.getElementById('piston-weight');
 
-        display.innerText = currentSecondsRemaining;
+        // Sostituito innerText con textContent per compatibilità SVG nativa su mobile
+        display.textContent = currentSecondsRemaining;
 
         let colorVar = '--color-idle';
         let startBottom = '0%';
 
         switch(currentState) {
-            case 'COUNTDOWN': colorVar = '--color-countdown'; title.innerText = "Prepare"; startBottom = '0%'; break;
-            case 'CONCENTRIC': colorVar = '--color-concentric'; title.innerText = "Ascent (Conc)"; startBottom = '0%'; break;
-            case 'TOP_PAUSE': colorVar = '--color-pause'; title.innerText = "Iso High"; startBottom = '90%'; break;
-            case 'ECCENTRIC': colorVar = '--color-eccentric'; title.innerText = "Descent (Ecc)"; startBottom = '90%'; break;
-            case 'BOTTOM_PAUSE': colorVar = '--color-pause'; title.innerText = "Iso Low"; startBottom = '0%'; break;
-            case 'LIMB_REST': colorVar = '--color-rest'; title.innerText = "Limb Switch"; startBottom = '0%'; break;
-            case 'SET_REST': colorVar = '--color-rest'; title.innerText = "Set Rest"; startBottom = '0%'; break;
+            case 'COUNTDOWN': colorVar = '--color-countdown'; title.textContent = "Prepare"; startBottom = '0%'; break;
+            case 'CONCENTRIC': colorVar = '--color-concentric'; title.textContent = "Ascent (Conc)"; startBottom = '0%'; break;
+            case 'TOP_PAUSE': colorVar = '--color-pause'; title.textContent = "Iso High"; startBottom = '90%'; break;
+            case 'ECCENTRIC': colorVar = '--color-eccentric'; title.textContent = "Descent (Ecc)"; startBottom = '90%'; break;
+            case 'BOTTOM_PAUSE': colorVar = '--color-pause'; title.textContent = "Iso Low"; startBottom = '0%'; break;
+            case 'LIMB_REST': colorVar = '--color-rest'; title.textContent = "Limb Switch"; startBottom = '0%'; break;
+            case 'SET_REST': colorVar = '--color-rest'; title.textContent = "Set Rest"; startBottom = '0%'; break;
         }
 
         if (phaseChanged) {
