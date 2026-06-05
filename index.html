@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customizable Workout Metronome</title>
+    <title>Tempo Metronome - Routine Tracker</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -12,12 +12,13 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --accent: #3b82f6;
+            --success: #10b981;
             
-            /* Colori dinamici delle fasi dell'allenamento */
             --color-countdown: #f59e0b;
             --color-concentric: #ef4444;
             --color-eccentric: #06b6d4;
             --color-pause: #10b981;
+            --color-rest: #8b5cf6;
             --color-idle: #64748b;
         }
 
@@ -29,322 +30,402 @@
             padding: 15px;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
             box-sizing: border-box;
         }
 
         .container {
             width: 100%;
-            max-width: 440px;
+            max-width: 480px;
             background-color: var(--card-bg);
             border-radius: 24px;
-            padding: 25px;
+            padding: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            margin-bottom: 30px;
         }
 
-        h1 {
+        h1, h2 {
             text-align: center;
-            font-size: 1.4rem;
-            font-weight: 800;
-            margin-top: 0;
-            margin-bottom: 20px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: var(--text-main);
+            margin-top: 0;
         }
+        h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 20px;}
+        h2 { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 15px;}
 
-        /* DASHBOARD GRAFICA (Cerchio + Pistone) */
+        .hidden { display: none !important; }
+
+        /* ROUTINE BUILDER */
+        .setup-mode { display: flex; flex-direction: column; gap: 15px; }
+        .exercise-card {
+            background-color: rgba(15, 23, 42, 0.5);
+            padding: 15px;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            position: relative;
+        }
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .form-group {
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+        input, select {
+            background: #334155;
+            border: 1px solid #475569;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        input[type="number"] { width: 100%; box-sizing: border-box; }
+        
+        .action-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+        .add-ex-btn { background-color: #475569; }
+        .start-workout-btn { background-color: var(--success); margin-top: 10px; }
+
+        /* WORKOUT PLAYER */
         .dashboard {
             background-color: #0f172a;
             border-radius: 20px;
-            padding: 25px 15px;
+            padding: 20px 10px;
             display: flex;
             justify-content: space-around;
             align-items: center;
-            margin-bottom: 25px;
-            position: relative;
+            margin-bottom: 20px;
             border: 1px solid #334155;
         }
-
-        /* Box del Cerchio Progressivo */
         .circle-box {
             position: relative;
-            width: 150px;
-            height: 150px;
+            width: 140px;
+            height: 140px;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-
         .circle-box svg {
             position: absolute;
             top: 0;
             left: 0;
             transform: rotate(-90deg);
-            width: 150px;
-            height: 150px;
+            width: 140px;
+            height: 140px;
         }
-
-        .circle-bg {
-            fill: none;
-            stroke: #1e293b;
-            stroke-width: 8;
-        }
-
+        .circle-bg { fill: none; stroke: #1e293b; stroke-width: 8; }
         .circle-progress {
             fill: none;
             stroke: var(--color-idle);
             stroke-width: 10;
             stroke-linecap: round;
-            stroke-dasharray: 408.4;
+            stroke-dasharray: 376.9; /* 2 * PI * 60 */
             stroke-dashoffset: 0;
             transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
         }
-
-        .center-text {
-            text-align: center;
-            z-index: 10;
-        }
-
-        #timer-display {
-            font-size: 3.5rem;
-            font-weight: 900;
-            line-height: 1;
-            margin-bottom: 2px;
-            font-variant-numeric: tabular-nums;
-        }
-
-        #phase-title {
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            max-width: 110px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Box del Pistone Anatomico */
-        .piston-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 150px;
-            width: 70px;
-        }
-
-        .piston-track {
-            width: 14px;
-            height: 120px;
-            background: #1e293b;
-            border-radius: 7px;
-            position: relative;
-            border: 1px solid #334155;
-        }
-
-        .piston-weight {
-            width: 34px;
-            height: 16px;
-            background: linear-gradient(135deg, #94a3b8, #64748b);
-            border-radius: 6px;
-            position: absolute;
-            left: -10px;
-            bottom: 0%;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transition: bottom 1s linear, background 0.3s ease;
-        }
-
-        .piston-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-top: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        /* CONTATORE RIPETIZIONI */
-        .reps-container {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        .reps-badge {
-            background: linear-gradient(135deg, #1e293b, #0f172a);
-            padding: 10px 24px;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 700;
-            display: inline-block;
-            border: 1px solid #334155;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        #reps-display {
-            color: #3b82f6;
-            font-size: 1.5rem;
-            font-weight: 900;
-            margin-left: 5px;
-        }
-
-        /* PULSANTI DI NAVIGAZIONE */
-        .controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        button {
-            flex: 1;
-            border: none;
-            padding: 16px;
-            font-size: 1rem;
-            font-weight: 700;
-            border-radius: 14px;
-            cursor: pointer;
-            transition: transform 0.1s ease, background-color 0.2s ease;
-            color: white;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        button:active { transform: scale(0.97); }
-
-        #playBtn { background-color: var(--accent); }
-        #playBtn.running { background-color: #ef4444; }
-        #resetBtn { background-color: #475569; }
-
-        /* PANNELLO SLIDERS */
-        .sliders-panel {
-            background-color: rgba(15, 23, 42, 0.4);
+        #timer-display { font-size: 3rem; font-weight: 900; line-height: 1; }
+        #phase-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); text-align: center; margin-top: 4px;}
+        
+        .piston-box { display: flex; flex-direction: column; align-items: center; height: 140px; width: 60px; }
+        .piston-track { width: 12px; height: 110px; background: #1e293b; border-radius: 6px; position: relative; border: 1px solid #334155; }
+        .piston-weight { width: 30px; height: 14px; background: var(--color-idle); border-radius: 4px; position: absolute; left: -10px; bottom: 0%; transition: bottom 1s linear, background 0.3s ease; }
+        
+        .status-panel {
+            background: rgba(15, 23, 42, 0.4);
             border-radius: 16px;
             padding: 15px;
-            border: 1px solid rgba(51, 65, 85, 0.5);
-        }
-
-        .slider-group {
-            margin-bottom: 15px;
-        }
-        .slider-group:last-child { margin-bottom: 0; }
-
-        .slider-header {
+            border: 1px solid #334155;
+            margin-bottom: 20px;
             display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 6px;
+            flex-direction: column;
+            gap: 8px;
         }
+        .status-row { display: flex; justify-content: space-between; font-size: 0.95rem; }
+        .status-row .label { color: var(--text-muted); font-weight: 600; }
+        .status-row .val { font-weight: 700; }
+        
+        .player-controls { display: flex; flex-direction: column; gap: 10px; }
+        .controls-row { display: flex; gap: 10px; width: 100%; }
+        .controls-row button { flex: 1; }
+        .btn-danger { background-color: #ef4444; }
+        .btn-warning { background-color: var(--color-countdown); }
+        .btn-failure { background-color: #f59e0b; color: #0f172a; font-weight: 800; }
 
-        .slider-header .val {
-            color: var(--text-main);
-            font-weight: 700;
-            background: #334155;
-            padding: 2px 8px;
-            border-radius: 6px;
+        .share-box {
+            background: #0f172a;
+            border: 1px dashed #475569;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
             font-size: 0.8rem;
-        }
-
-        input[type=range] {
-            width: 100%;
-            height: 6px;
-            background: #334155;
-            border-radius: 3px;
-            outline: none;
-            -webkit-appearance: none;
-        }
-
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--accent);
+            color: var(--text-muted);
+            margin-top: 15px;
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Custom Workout Metronome</h1>
+    <div id="setup-container" class="setup-mode">
+        <h1>Routine Setup</h1>
+        <div id="exercises-list"></div>
+        <button class="action-btn add-ex-btn" onclick="addExerciseField()">+ Add Exercise</button>
+        <button class="action-btn start-workout-btn" onclick="startWorkout()">Start Workout</button>
+        <div class="share-box" onclick="copyConfigLink()">🔗 Click here to copy the shareable link of this routine</div>
+    </div>
 
-    <div class="dashboard">
-        <div class="circle-box">
-            <svg>
-                <circle class="circle-bg" cx="75" cy="75" r="65"></circle>
-                <circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="65"></circle>
-            </svg>
-            <div class="center-text">
-                <div id="timer-display">--</div>
-                <div id="phase-title">Ready</div>
+    <div id="player-container" class="hidden">
+        <h1 id="current-ex-name">Exercise</h1>
+        <h2 id="current-set-hub">SET 1/3</h2>
+
+        <div class="dashboard">
+            <div class="circle-box">
+                <svg><circle class="circle-bg" cx="70" cy="70" r="60"></circle><circle id="progress-ring" class="circle-progress" cx="70" cy="70" r="60"></circle></svg>
+                <div style="z-index:10; text-align:center;">
+                    <div id="timer-display">--</div>
+                    <div id="phase-title">Ready</div>
+                </div>
+            </div>
+            <div class="piston-box">
+                <div class="piston-track"><div id="piston-weight" class="piston-weight"></div></div>
+                <div style="font-size:0.65rem; font-weight:700; margin-top:6px; color:var(--text-muted);">VECTOR</div>
             </div>
         </div>
 
-        <div class="piston-box">
-            <div class="piston-track">
-                <div id="piston-weight" class="piston-weight"></div>
+        <div class="status-panel">
+            <div class="status-row"><span class="label">Execution Mode:</span><span id="status-mode" class="val">--</span></div>
+            <div class="status-row"><span class="label">Active Limb:</span><span id="status-limb" class="val">--</span></div>
+            <div class="status-row"><span class="label">Reps Counter:</span><span id="status-reps" class="val">0</span></div>
+        </div>
+
+        <div class="player-controls">
+            <button id="failureBtn" class="action-btn btn-failure hidden" onclick="triggerManualFailure()">🛑 Hit Failure! End Set</button>
+            <div class="controls-row">
+                <button id="playBtn" class="action-btn" onclick="toggleEngine()">Play</button>
+                <button id="nextSetBtn" class="action-btn btn-warning hidden" onclick="manualNextSet()">Start Next Set</button>
+                <button class="action-btn btn-danger" onclick="stopWorkout()">Edit Routine</button>
             </div>
-            <div class="piston-label">Piston</div>
-        </div>
-    </div>
-
-    <div class="reps-container">
-        <div class="reps-badge">
-            Reps: <span id="reps-display">0</span>
-        </div>
-    </div>
-
-    <div class="controls">
-        <button id="playBtn" onclick="toggleMetronome()">Play</button>
-        <button id="resetBtn" onclick="resetMetronome()">Reset</button>
-    </div>
-
-    <div class="sliders-panel">
-        <div class="slider-group">
-            <div class="slider-header"><span>Start Countdown</span><span class="val" id="v-countdown">5s</span></div>
-            <input type="range" id="countdown" min="2" max="20" value="5" oninput="updateVal('countdown', this.value)">
-        </div>
-        <hr style="border:0; height:1px; background:#334155; margin:15px 0;">
-        <div class="slider-group">
-            <div class="slider-header"><span>Concentric (Rise)</span><span class="val" id="v-concentric">1s</span></div>
-            <input type="range" id="concentric" min="0" max="3" value="1" oninput="updateVal('concentric', this.value)">
-        </div>
-        <div class="slider-group">
-            <div class="slider-header"><span>Isometry (High) Pause</span><span class="val" id="v-topPause">0s</span></div>
-            <input type="range" id="topPause" min="0" max="3" value="0" oninput="updateVal('topPause', this.value)">
-        </div>
-        <div class="slider-group">
-            <div class="slider-header"><span>Eccentric (Drop)</span><span class="val" id="v-eccentric">2s</span></div>
-            <input type="range" id="eccentric" min="0" max="3" value="2" oninput="updateVal('eccentric', this.value)">
-        </div>
-        <div class="slider-group">
-            <div class="slider-header"><span>Stretch (Low) Pause</span><span class="val" id="v-bottomPause">0s</span></div>
-            <input type="range" id="bottomPause" min="0" max="3" value="0" oninput="updateVal('bottomPause', this.value)">
         </div>
     </div>
 </div>
 
 <script>
-    let isRunning = false;
-    let timerInterval = null;
+    let routine = [];
+    let currentExIdx = 0;
+    let currentSetIdx = 0;
+    let currentLimb = 'UNILATERAL_LEFT';
     let currentState = 'NOT_STARTED'; 
+    
     let currentSecondsRemaining = 0;
     let phaseTotalSeconds = 0;
-    let reps = 0;
+    let actualReps = 0;
+    
+    let currentPhaseId = 0;
+    let lastPhaseId = -1;
+
+    let isRunning = false;
+    let engineInterval = null;
     let audioCtx = null;
 
     const ring = document.getElementById('progress-ring');
-    const ringCircumference = 2 * Math.PI * 65; 
+    const ringCircumference = 2 * Math.PI * 60;
     ring.style.strokeDasharray = ringCircumference;
 
-    function updateVal(id, val) {
-        document.getElementById(`v-${id}`).innerText = val + 's';
+    function init() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataParam = urlParams.get('data');
+        if (dataParam) {
+            try {
+                routine = JSON.parse(atob(decodeURIComponent(dataParam)));
+                renderExercisesFromData();
+            } catch (e) {
+                console.error("Error decoding URL parameters, loading default.");
+                addDefaultExercise();
+            }
+        } else {
+            addDefaultExercise();
+        }
+    }
+
+    function saveStateToURL() {
+        buildRoutineFromDOM();
+        if(routine.length === 0) return;
+        const base64Str = btoa(JSON.stringify(routine));
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?data=' + encodeURIComponent(base64Str);
+        window.history.replaceState({path: newUrl}, '', newUrl);
+    }
+
+    function copyConfigLink() {
+        saveStateToURL();
+        navigator.clipboard.writeText(window.location.href);
+        alert("Routine link copied to clipboard! Save it in your bookmarks.");
+    }
+
+    function addDefaultExercise() {
+        routine = [{ name: "Bench Press", type: "bilateral", sets: 3, reps: 0, countdown: 5, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 90 }];
+        renderExercisesFromData();
+    }
+
+    function renderExercisesFromData() {
+        const container = document.getElementById('exercises-list');
+        container.innerHTML = '';
+        routine.forEach((ex, idx) => {
+            container.appendChild(createExerciseCard(ex, idx));
+        });
+    }
+
+    function createExerciseCard(ex, idx) {
+        const div = document.createElement('div');
+        div.className = 'exercise-card';
+        div.innerHTML = `
+            <button class="remove-btn" onclick="removeExercise(${idx})">Delete</button>
+            <div class="form-group">
+                <label>Exercise Name</label>
+                <input type="text" class="ex-name" value="${ex.name}" onchange="saveStateToURL()">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Execution Type</label>
+                    <select class="ex-type" onchange="toggleLimbRestDOM(this); saveStateToURL();">
+                        <option value="bilateral" ${ex.type === 'bilateral' ? 'selected' : ''}>Bilateral (Single Set)</option>
+                        <option value="unilateral" ${ex.type === 'unilateral' ? 'selected' : ''}>Unilateral (One side at a time)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Total Sets</label>
+                    <input type="number" class="ex-sets" value="${ex.sets}" min="1" onchange="saveStateToURL()">
+                </div>
+                <div class="form-group">
+                    <label>Target Reps (0 = To Failure)</label>
+                    <input type="number" class="ex-reps" value="${ex.reps ?? 0}" min="0" onchange="saveStateToURL()">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Conc (↑)</label><input type="number" class="ex-conc" value="${ex.conc}" min="0"></div>
+                <div class="form-group"><label>Iso High</label><input type="number" class="ex-topP" value="${ex.topP}" min="0"></div>
+                <div class="form-group"><label>Ecc (↓)</label><input type="number" class="ex-ecc" value="${ex.ecc}" min="0"></div>
+                <div class="form-group"><label>Iso Low</label><input type="number" class="ex-botP" value="${ex.botP}" min="0"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group class-limb-rest ${ex.type === 'bilateral' ? 'hidden' : ''}">
+                    <label>Limb Rest (s)</label>
+                    <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}">
+                </div>
+                <div class="form-group">
+                    <label>Post-Set Rest (s)</label>
+                    <input type="number" class="ex-setRest" value="${ex.setRest}" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Countdown (s)</label>
+                    <input type="number" class="ex-countdown" value="${ex.countdown || 5}" min="2">
+                </div>
+            </div>
+        `;
+        return div;
+    }
+
+    function toggleLimbRestDOM(selectElem) {
+        const card = selectElem.closest('.exercise-card');
+        const limbRestGroup = card.querySelector('.class-limb-rest');
+        if(selectElem.value === 'unilateral') limbRestGroup.classList.remove('hidden');
+        else limbRestGroup.classList.add('hidden');
+    }
+
+    function addExerciseField() {
+        buildRoutineFromDOM();
+        routine.push({ name: "New Exercise", type: "bilateral", sets: 3, reps: 0, countdown: 5, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60 });
+        renderExercisesFromData();
+        saveStateToURL();
+    }
+
+    function removeExercise(idx) {
+        buildRoutineFromDOM();
+        routine.splice(idx, 1);
+        renderExercisesFromData();
+        saveStateToURL();
+    }
+
+    function buildRoutineFromDOM() {
+        const cards = document.querySelectorAll('.exercise-card');
+        routine = Array.from(cards).map(card => ({
+            name: card.querySelector('.ex-name').value,
+            type: card.querySelector('.ex-type').value,
+            sets: parseInt(card.querySelector('.ex-sets').value) || 1,
+            reps: parseInt(card.querySelector('.ex-reps').value) === 0 ? 0 : (parseInt(card.querySelector('.ex-reps').value) || 0),
+            conc: parseInt(card.querySelector('.ex-conc').value) || 0,
+            topP: parseInt(card.querySelector('.ex-topP').value) || 0,
+            ecc: parseInt(card.querySelector('.ex-ecc').value) || 0,
+            botP: parseInt(card.querySelector('.ex-botP').value) || 0,
+            limbRest: parseInt(card.querySelector('.ex-limbRest').value) || 0,
+            setRest: parseInt(card.querySelector('.ex-setRest').value) || 0,
+            countdown: parseInt(card.querySelector('.ex-countdown').value) || 5
+        }));
+    }
+
+    function startWorkout() {
+        buildRoutineFromDOM();
+        if(routine.length === 0) return alert("Add at least one exercise!");
+        
+        document.getElementById('setup-container').classList.add('hidden');
+        document.getElementById('player-container').classList.remove('hidden');
+        
+        currentExIdx = 0;
+        currentSetIdx = 0;
+        resetStateForSet();
+        
+        lastPhaseId = currentPhaseId - 1; 
+        updatePlayerUI(true);
+    }
+
+    function stopWorkout() {
+        clearInterval(engineInterval);
+        isRunning = false;
+        document.getElementById('playBtn').innerText = 'Play';
+        document.getElementById('playBtn').classList.remove('running');
+        document.getElementById('nextSetBtn').classList.add('hidden');
+        document.getElementById('failureBtn').classList.add('hidden');
+        document.getElementById('player-container').classList.add('hidden');
+        document.getElementById('setup-container').classList.remove('hidden');
+    }
+
+    function resetStateForSet() {
+        const ex = routine[currentExIdx];
+        currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
+        currentState = 'COUNTDOWN';
+        phaseTotalSeconds = ex.countdown;
+        currentSecondsRemaining = phaseTotalSeconds;
+        actualReps = 0;
+        currentPhaseId++;
     }
 
     function initAudio() {
@@ -352,212 +433,275 @@
         if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
-    // GESTIONE AUDIO AGGIORNATA CON SUONO GRAVE PER LE PAUSE
-    function playTick(state) {
-        let frequency = 440; // Default: Countdown / Prepare
+    function shouldPlayRestTick(sec) {
+        // 1. Final countdown (every second)
+        if (sec <= 10 && sec >= 0) return true;
         
-        if (state === 'CONCENTRIC') frequency = 850;    // Acuto per la salita
-        if (state === 'ECCENTRIC') frequency = 300;     // Medio-basso per la discesa
-        if (state === 'TOP_PAUSE' || state === 'BOTTOM_PAUSE') frequency = 180; // Molto grave per le isometrie
+        // 2. Pre-warning tick at 15s
+        if (sec === 15) return true;
+        
+        // 3. Critical window between 120s and 30s (inclusive): every 30 seconds
+        if (sec <= 120 && sec >= 30) {
+            return (sec % 30 === 0);
+        }
+        
+        // 4. Above 120s: strictly on the minute mark (e.g., 180s, 240s)
+        if (sec > 120) {
+            return (sec % 60 === 0);
+        }
+        
+        return false;
+    }
+
+    function playTick(state) {
+        initAudio();
+        
+        if (state === 'LIMB_REST' || state === 'SET_REST') {
+            if (!shouldPlayRestTick(currentSecondsRemaining)) return;
+        }
+
+        let freq = 440;
+        if (state === 'CONCENTRIC') freq = 850;
+        if (state === 'ECCENTRIC') freq = 300;
+        if (state === 'TOP_PAUSE' || state === 'BOTTOM_PAUSE') freq = 180;
+        if (state === 'LIMB_REST' || state === 'SET_REST') freq = 520; 
 
         const osc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        
+        const gain = audioCtx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-        
-        gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.07);
-        
-        osc.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.07);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
         osc.start();
         osc.stop(audioCtx.currentTime + 0.07);
     }
 
-    function updateVisuals(phaseChanged) {
-        const title = document.getElementById('phase-title');
-        const display = document.getElementById('timer-display');
-        const piston = document.getElementById('piston-weight');
+    function toggleEngine() {
+        initAudio();
+        const btn = document.getElementById('playBtn');
+        if (isRunning) {
+            clearInterval(engineInterval);
+            isRunning = false;
+            btn.innerText = 'Play';
+            btn.classList.remove('running');
+            updatePlayerUI(false); 
+        } else {
+            isRunning = true;
+            btn.innerText = 'Stop';
+            btn.classList.add('running');
+            tick();
+            engineInterval = setInterval(tick, 1000);
+        }
+    }
+
+    function tick() {
+        if (currentState === 'WAIT_FOR_NEXT') return; 
+
+        if (currentSecondsRemaining <= 0) {
+            advanceStateLogic();
+        }
+
+        let phaseChanged = (currentPhaseId !== lastPhaseId);
+        lastPhaseId = currentPhaseId;
+
+        if (currentState !== 'WAIT_FOR_NEXT') {
+            playTick(currentState);
+            updatePlayerUI(phaseChanged);
+            currentSecondsRemaining--;
+        }
+    }
+
+    function advanceStateLogic() {
+        const ex = routine[currentExIdx];
+
+        if (currentState === 'COUNTDOWN') { goToPhase('CONCENTRIC', ex.conc); return; }
+        if (currentState === 'CONCENTRIC') { goToPhase(ex.topP > 0 ? 'TOP_PAUSE' : 'ECCENTRIC', ex.topP > 0 ? ex.topP : ex.ecc); return; }
+        if (currentState === 'TOP_PAUSE') { goToPhase('ECCENTRIC', ex.ecc); return; }
+        if (currentState === 'ECCENTRIC') {
+            goToPhase(ex.botP > 0 ? 'BOTTOM_PAUSE' : 'END_REP_CHECK', ex.botP > 0 ? ex.botP : 0);
+            if (ex.botP === 0) handleEndRep();
+            return;
+        }
+        if (currentState === 'BOTTOM_PAUSE') { handleEndRep(); return; }
+
+        function handleEndRep() {
+            actualReps++;
+            if (ex.reps > 0 && actualReps >= ex.reps) {
+                closeActiveLimbOrSet();
+            } else {
+                goToPhase('CONCENTRIC', ex.conc);
+            }
+        }
+    }
+
+    function triggerManualFailure() {
+        if(!isRunning || currentState === 'SET_REST' || currentState === 'LIMB_REST' || currentState === 'COUNTDOWN') return;
+        closeActiveLimbOrSet();
+        let phaseChanged = (currentPhaseId !== lastPhaseId);
+        lastPhaseId = currentPhaseId;
+        updatePlayerUI(phaseChanged);
+    }
+
+    function closeActiveLimbOrSet() {
+        const ex = routine[currentExIdx];
+        if (currentLimb === 'UNILATERAL_LEFT') {
+            currentLimb = 'UNILATERAL_RIGHT';
+            actualReps = 0;
+            if (ex.limbRest > 0) goToPhase('LIMB_REST', ex.limbRest);
+            else goToPhase('COUNTDOWN', ex.countdown);
+        } else {
+            currentSetIdx++;
+            if (currentSetIdx < ex.sets) {
+                goToPhase('SET_REST', ex.setRest);
+            } else {
+                currentExIdx++;
+                if (currentExIdx < routine.length) {
+                    currentSetIdx = 0;
+                    resetStateForSet();
+                    goToPhase('SET_REST', ex.setRest);
+                } else {
+                    clearInterval(engineInterval);
+                    isRunning = false;
+                    alert("🏆 CONGRATULATIONS! You have completed your workout session.");
+                    stopWorkout();
+                }
+            }
+        }
+    }
+
+    function goToPhase(nextState, duration) {
+        const ex = routine[currentExIdx];
+        if (nextState === 'END_REP_CHECK') return; 
+
+        currentState = nextState;
+        phaseTotalSeconds = duration;
+        currentSecondsRemaining = phaseTotalSeconds;
+        currentPhaseId++; 
+
+        if (currentState === 'SET_REST' && phaseTotalSeconds === 0) {
+            triggerWaitState();
+        }
         
-        display.innerText = currentSecondsRemaining;
+        if (duration === 0 && (currentState === 'CONCENTRIC' || currentState === 'TOP_PAUSE' || currentState === 'ECCENTRIC' || currentState === 'BOTTOM_PAUSE')) {
+            advanceStateLogic();
+        }
+    }
+
+    function triggerWaitState() {
+        currentState = 'WAIT_FOR_NEXT';
+        currentSecondsRemaining = 0;
+        phaseTotalSeconds = 0;
+        currentPhaseId++;
+        document.getElementById('playBtn').classList.add('hidden');
+        document.getElementById('nextSetBtn').classList.remove('hidden');
+        document.getElementById('failureBtn').classList.add('hidden');
+    }
+
+    function manualNextSet() {
+        document.getElementById('nextSetBtn').classList.add('hidden');
+        document.getElementById('playBtn').classList.remove('hidden');
+        resetStateForSet();
+        
+        lastPhaseId = currentPhaseId - 1;
+        updatePlayerUI(true);
+        if(!isRunning) {
+            toggleEngine();
+        }
+    }
+
+    function updatePlayerUI(phaseChanged) {
+        const ex = routine[currentExIdx];
+        if (!ex) return;
+
+        if (currentState === 'SET_REST' && currentSecondsRemaining < 0) {
+            triggerWaitState();
+            phaseChanged = true;
+        }
+
+        document.getElementById('current-ex-name').innerText = ex.name;
+        document.getElementById('current-set-hub').innerText = `SET ${currentSetIdx + 1}/${ex.sets}`;
+        
+        const targetString = ex.reps > 0 ? ` (Target: ${ex.reps})` : ' (Target: To Failure)';
+        document.getElementById('status-reps').innerText = actualReps + targetString;
+        document.getElementById('status-mode').innerText = ex.type === 'unilateral' ? 'Unilateral' : 'Single Set';
+        
+        let limbText = "Bilateral";
+        if(currentLimb === 'UNILATERAL_LEFT') limbText = "Left Limb / 1st";
+        if(currentLimb === 'UNILATERAL_RIGHT') limbText = "Right Limb / 2nd";
+        document.getElementById('status-limb').innerText = limbText;
+
+        const failureBtn = document.getElementById('failureBtn');
+        const isAnActivePhase = (currentState === 'CONCENTRIC' || currentState === 'TOP_PAUSE' || currentState === 'ECCENTRIC' || currentState === 'BOTTOM_PAUSE');
+        if(isRunning && isAnActivePhase) {
+            failureBtn.classList.remove('hidden');
+        } else {
+            failureBtn.classList.add('hidden');
+        }
+
+        const display = document.getElementById('timer-display');
+        const title = document.getElementById('phase-title');
+        const piston = document.getElementById('piston-weight');
+
+        display.innerText = currentState === 'WAIT_FOR_NEXT' ? 'GO' : currentSecondsRemaining;
 
         let colorVar = '--color-idle';
         let startBottom = '0%';
-        
-        if (currentState === 'COUNTDOWN') { colorVar = '--color-countdown'; title.innerText = "Prepare"; startBottom = '0%'; }
-        else if (currentState === 'CONCENTRIC') { colorVar = '--color-concentric'; title.innerText = "Raise"; startBottom = '0%'; }
-        else if (currentState === 'TOP_PAUSE') { colorVar = '--color-pause'; title.innerText = "High Pause"; startBottom = '90%'; }
-        else if (currentState === 'ECCENTRIC') { colorVar = '--color-eccentric'; title.innerText = "Drop"; startBottom = '90%'; }
-        else if (currentState === 'BOTTOM_PAUSE') { colorVar = '--color-pause'; title.innerText = "Low Pause"; startBottom = '0%'; }
+
+        switch(currentState) {
+            case 'COUNTDOWN': colorVar = '--color-countdown'; title.innerText = "Prepare"; startBottom = '0%'; break;
+            case 'CONCENTRIC': colorVar = '--color-concentric'; title.innerText = "Ascent (Conc)"; startBottom = '0%'; break;
+            case 'TOP_PAUSE': colorVar = '--color-pause'; title.innerText = "Iso High"; startBottom = '90%'; break;
+            case 'ECCENTRIC': colorVar = '--color-eccentric'; title.innerText = "Descent (Ecc)"; startBottom = '90%'; break;
+            case 'BOTTOM_PAUSE': colorVar = '--color-pause'; title.innerText = "Iso Low"; startBottom = '0%'; break;
+            case 'LIMB_REST': colorVar = '--color-rest'; title.innerText = "Limb Switch"; startBottom = '0%'; break;
+            case 'SET_REST': colorVar = '--color-rest'; title.innerText = "Set Rest"; startBottom = '0%'; break;
+            case 'WAIT_FOR_NEXT': colorVar = '--success'; title.innerText = "Ready?"; startBottom = '0%'; break;
+        }
 
         if (phaseChanged) {
             ring.style.transition = 'none';
             piston.style.transition = 'none';
-            
             ring.style.stroke = `var(${colorVar})`;
             piston.style.background = `var(${colorVar})`;
             ring.style.strokeDashoffset = '0';
             piston.style.bottom = startBottom;
             
-            void ring.offsetHeight;
+            void ring.offsetHeight; 
             void piston.offsetHeight;
-            
-            ring.style.transition = 'stroke-dashoffset 1s linear, stroke 0.3s ease';
-            piston.style.transition = 'bottom 1s linear, background 0.3s ease';
+
+            if (isRunning) {
+                ring.style.transition = 'stroke-dashoffset 1s linear, stroke 0.3s ease';
+                piston.style.transition = 'bottom 1s linear, background 0.3s ease';
+            }
         } else {
             ring.style.stroke = `var(${colorVar})`;
             piston.style.background = `var(${colorVar})`;
         }
 
-        let targetSeconds = currentSecondsRemaining - 1;
-        let targetPct = targetSeconds / phaseTotalSeconds;
-        ring.style.strokeDashoffset = ringCircumference * (1 - targetPct);
+        if (currentState !== 'WAIT_FOR_NEXT') {
+            let targetSeconds = isRunning ? (currentSecondsRemaining - 1) : currentSecondsRemaining;
+            let targetPct = phaseTotalSeconds > 0 ? (targetSeconds / phaseTotalSeconds) : 0;
+            ring.style.strokeDashoffset = ringCircumference * (1 - targetPct);
 
-        let completedFactor = (phaseTotalSeconds - targetSeconds) / phaseTotalSeconds;
-        if (currentState === 'CONCENTRIC') {
-            piston.style.bottom = (completedFactor * 90) + '%';
-        } else if (currentState === 'TOP_PAUSE') {
-            piston.style.bottom = '90%';
-        } else if (currentState === 'ECCENTRIC') {
-            piston.style.bottom = (90 - (completedFactor * 90)) + '%';
-        } else if (currentState === 'BOTTOM_PAUSE' || currentState === 'COUNTDOWN') {
+            let completedFactor = phaseTotalSeconds > 0 ? ((phaseTotalSeconds - targetSeconds) / phaseTotalSeconds) : 0;
+            if (currentState === 'CONCENTRIC') {
+                piston.style.bottom = (completedFactor * 90) + '%';
+            } else if (currentState === 'TOP_PAUSE') {
+                piston.style.bottom = '90%';
+            } else if (currentState === 'ECCENTRIC') {
+                piston.style.bottom = (90 - (completedFactor * 90)) + '%';
+            } else {
+                piston.style.bottom = '0%';
+            }
+        } else {
+            ring.style.strokeDashoffset = 0;
             piston.style.bottom = '0%';
         }
     }
 
-    function advancePhase() {
-        const conc = parseInt(document.getElementById('concentric').value);
-        const topP = parseInt(document.getElementById('topPause').value);
-        const ecc = parseInt(document.getElementById('eccentric').value);
-        const botP = parseInt(document.getElementById('bottomPause').value);
-
-        if (conc === 0 && ecc === 0 && topP === 0 && botP === 0) {
-            resetMetronome();
-            return;
-        }
-
-        if (currentState === 'NOT_STARTED') {
-            currentState = 'COUNTDOWN';
-            phaseTotalSeconds = parseInt(document.getElementById('countdown').value);
-            currentSecondsRemaining = phaseTotalSeconds;
-            return;
-        }
-
-        if (currentState === 'COUNTDOWN') {
-            if (conc > 0) { currentState = 'CONCENTRIC'; phaseTotalSeconds = conc; }
-            else if (topP > 0) { currentState = 'TOP_PAUSE'; phaseTotalSeconds = topP; }
-            else if (ecc > 0) { currentState = 'ECCENTRIC'; phaseTotalSeconds = ecc; }
-            else if (botP > 0) { currentState = 'BOTTOM_PAUSE'; phaseTotalSeconds = botP; }
-            currentSecondsRemaining = phaseTotalSeconds;
-            return;
-        }
-
-        if (currentState === 'CONCENTRIC') {
-            reps++;
-            document.getElementById('reps-display').innerText = reps;
-
-            if (topP > 0) { currentState = 'TOP_PAUSE'; phaseTotalSeconds = topP; }
-            else if (ecc > 0) { currentState = 'ECCENTRIC'; phaseTotalSeconds = ecc; }
-            else if (botP > 0) { currentState = 'BOTTOM_PAUSE'; phaseTotalSeconds = botP; }
-            else if (conc > 0) { currentState = 'CONCENTRIC'; phaseTotalSeconds = conc; }
-            currentSecondsRemaining = phaseTotalSeconds;
-            return;
-        }
-
-        if (currentState === 'TOP_PAUSE') {
-            if (ecc > 0) { currentState = 'ECCENTRIC'; phaseTotalSeconds = ecc; }
-            else if (botP > 0) { currentState = 'BOTTOM_PAUSE'; phaseTotalSeconds = botP; }
-            else if (conc > 0) { currentState = 'CONCENTRIC'; phaseTotalSeconds = conc; }
-            else if (topP > 0) { currentState = 'TOP_PAUSE'; phaseTotalSeconds = topP; }
-            currentSecondsRemaining = phaseTotalSeconds;
-            return;
-        }
-
-        if (currentState === 'ECCENTRIC') {
-            if (botP > 0) { currentState = 'BOTTOM_PAUSE'; phaseTotalSeconds = botP; }
-            else if (conc > 0) { currentState = 'CONCENTRIC'; phaseTotalSeconds = conc; }
-            else if (topP > 0) { currentState = 'TOP_PAUSE'; phaseTotalSeconds = topP; }
-            else if (ecc > 0) { currentState = 'ECCENTRIC'; phaseTotalSeconds = ecc; }
-            currentSecondsRemaining = phaseTotalSeconds;
-            return;
-        }
-
-        if (currentState === 'BOTTOM_PAUSE') {
-            if (conc > 0) { currentState = 'CONCENTRIC'; phaseTotalSeconds = conc; }
-            else if (topP > 0) { currentState = 'TOP_PAUSE'; phaseTotalSeconds = topP; }
-            else if (ecc > 0) { currentState = 'ECCENTRIC'; phaseTotalSeconds = ecc; }
-            else if (botP > 0) { currentState = 'BOTTOM_PAUSE'; phaseTotalSeconds = botP; }
-            currentSecondsRemaining = phaseTotalSeconds;
-            return;
-        }
-    }
-
-    function tick() {
-        let phaseChanged = false;
-        if (currentState === 'NOT_STARTED' || currentSecondsRemaining <= 0) {
-            advancePhase();
-            phaseChanged = true;
-        }
-
-        playTick(currentState);
-        updateVisuals(phaseChanged);
-
-        currentSecondsRemaining--;
-    }
-
-    function toggleMetronome() {
-        initAudio();
-        const btn = document.getElementById('playBtn');
-        const piston = document.getElementById('piston-weight');
-
-        if (isRunning) {
-            clearInterval(timerInterval);
-            isRunning = false;
-            btn.innerText = 'Play';
-            btn.classList.remove('running');
-            
-            piston.style.bottom = window.getComputedStyle(piston).bottom;
-            ring.style.strokeDashoffset = window.getComputedStyle(ring).strokeDashoffset;
-        } else {
-            isRunning = true;
-            btn.innerText = 'Stop';
-            btn.classList.add('running');
-            
-            piston.style.transition = 'bottom 1s linear, background 0.3s ease';
-            ring.style.transition = 'stroke-dashoffset 1s linear, stroke 0.3s ease';
-
-            tick();
-            timerInterval = setInterval(tick, 1000);
-        }
-    }
-
-    function resetMetronome() {
-        clearInterval(timerInterval);
-        isRunning = false;
-        currentState = 'NOT_STARTED';
-        currentSecondsRemaining = 0;
-        phaseTotalSeconds = 0;
-        reps = 0;
-        
-        const btn = document.getElementById('playBtn');
-        btn.innerText = 'Play';
-        btn.classList.remove('running');
-        
-        const piston = document.getElementById('piston-weight');
-        piston.style.transition = 'none';
-        piston.style.bottom = '0%';
-        piston.style.background = 'linear-gradient(135deg, #94a3b8, #64748b)';
-        
-        ring.style.transition = 'none';
-        ring.style.strokeDashoffset = 0;
-        ring.style.stroke = 'var(--color-idle)';
-        
-        document.getElementById('reps-display').innerText = '0';
-        document.getElementById('timer-display').innerText = '--';
-        document.getElementById('phase-title').innerText = 'Ready';
-    }
+    window.onload = init;
 </script>
 
 </body>
