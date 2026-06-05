@@ -56,6 +56,20 @@
 
         .hidden { display: none !important; }
 
+        /* GLOBAL COUNTDOWN HEADER */
+        .global-countdown-box {
+            background-color: rgba(15, 23, 42, 0.6);
+            padding: 12px 15px;
+            border-radius: 14px;
+            border: 1px solid #475569;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .global-countdown-box label { font-size: 0.9rem; }
+        .global-countdown-box input { width: 80px; text-align: center; padding: 6px; }
+
         /* ROUTINE BUILDER */
         .setup-mode { display: flex; flex-direction: column; gap: 15px; }
         .exercise-card {
@@ -84,12 +98,6 @@
             display: flex;
             flex-direction: column;
             gap: 5px;
-        }
-        .form-grid-2x2 {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 10px;
         }
         .form-grid-4x1 {
             display: grid;
@@ -217,17 +225,6 @@
                 justify-content: flex-start;
                 padding: 20px 16px;
             }
-            .form-grid-2x2 {
-                grid-template-columns: 1fr; /* Sotto i 480px i dati principali respirano meglio in riga singola */
-                gap: 10px;
-            }
-            .form-grid-2x2 .form-group:nth-child(2), 
-            .form-grid-2x2 .form-group:nth-child(3) {
-                display: inline-grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
-            /* Gestione compatta accoppiata per Set e Reps su mobile */
             .mobile-split-row {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -235,7 +232,7 @@
                 margin-bottom: 10px;
             }
             .form-grid-4x1 {
-                grid-template-columns: repeat(2, 1fr); /* Diventa un comodo 2x2 per le dita */
+                grid-template-columns: repeat(2, 1fr);
                 gap: 10px;
             }
             .circle-box {
@@ -258,6 +255,12 @@
 <div class="container">
     <div id="setup-container" class="setup-mode">
         <h1>Routine Setup</h1>
+        
+        <div class="global-countdown-box">
+            <label>⏱️ Initial Global Countdown (s)</label>
+            <input type="number" id="global-init-countdown" value="10" min="2">
+        </div>
+
         <div id="exercises-list"></div>
         <button class="action-btn add-ex-btn" onclick="addExerciseField()">+ Add Exercise</button>
         <button class="action-btn start-workout-btn" onclick="startWorkout()">Start Workout</button>
@@ -292,7 +295,7 @@
             <button id="failureBtn" class="action-btn btn-failure hidden" onclick="triggerManualFailure()">🛑 Hit Failure! End Set</button>
             <div class="controls-row">
                 <button id="playBtn" class="action-btn" onclick="toggleEngine()">Play</button>
-                <button id="nextSetBtn" class="action-btn btn-warning hidden" onclick="manualNextSet()">Start Next Set</button>
+                <button id="nextSetBtn" class="action-btn btn-warning hidden" onclick="manualNextSet()">Skip Rest</button>
                 <button class="action-btn btn-danger" onclick="stopWorkout()">Edit Routine</button>
             </div>
         </div>
@@ -309,6 +312,7 @@
     let currentSecondsRemaining = 0;
     let phaseTotalSeconds = 0;
     let actualReps = 0;
+    let initialCountdownSeconds = 10;
     
     let currentPhaseId = 0;
     let lastPhaseId = -1;
@@ -326,7 +330,14 @@
         const dataParam = urlParams.get('data');
         if (dataParam) {
             try {
-                routine = JSON.parse(atob(decodeURIComponent(dataParam)));
+                const parsed = JSON.parse(atob(decodeURIComponent(dataParam)));
+                if (parsed.routine) {
+                    routine = parsed.routine;
+                    initialCountdownSeconds = parsed.globalCountdown || 10;
+                } else {
+                    routine = parsed; 
+                }
+                document.getElementById('global-init-countdown').value = initialCountdownSeconds;
                 renderExercisesFromData();
             } catch (e) {
                 console.error("Error decoding URL parameters, loading default.");
@@ -340,7 +351,11 @@
     function saveStateToURL() {
         buildRoutineFromDOM();
         if(routine.length === 0) return;
-        const base64Str = btoa(JSON.stringify(routine));
+        const configObj = {
+            globalCountdown: initialCountdownSeconds,
+            routine: routine
+        };
+        const base64Str = btoa(JSON.stringify(configObj));
         const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?data=' + encodeURIComponent(base64Str);
         window.history.replaceState({path: newUrl}, '', newUrl);
     }
@@ -352,7 +367,9 @@
     }
 
     function addDefaultExercise() {
-        routine = [{ name: "Bench Press", type: "bilateral", sets: 3, reps: 0, countdown: 5, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 90 }];
+        routine = [{ name: "Bench Press", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 90 }];
+        initialCountdownSeconds = 10;
+        document.getElementById('global-init-countdown').value = initialCountdownSeconds;
         renderExercisesFromData();
     }
 
@@ -405,15 +422,10 @@
                     <label>Post-Set Rest (s)</label>
                     <input type="number" class="ex-setRest" value="${ex.setRest}" min="0">
                 </div>
-                <div class="form-group">
-                    <label>Countdown (s)</label>
-                    <input type="number" class="ex-countdown" value="${ex.countdown || 5}" min="2">
+                <div class="form-group class-limb-rest ${ex.type === 'bilateral' ? 'hidden' : ''}">
+                    <label>Limb Rest (s)</label>
+                    <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}">
                 </div>
-            </div>
-
-            <div class="form-group class-limb-rest ${ex.type === 'bilateral' ? 'hidden' : ''}">
-                <label>Limb Rest (seconds)</label>
-                <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}">
             </div>
         `;
         return div;
@@ -428,7 +440,7 @@
 
     function addExerciseField() {
         buildRoutineFromDOM();
-        routine.push({ name: "New Exercise", type: "bilateral", sets: 3, reps: 0, countdown: 5, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60 });
+        routine.push({ name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60 });
         renderExercisesFromData();
         saveStateToURL();
     }
@@ -441,6 +453,7 @@
     }
 
     function buildRoutineFromDOM() {
+        initialCountdownSeconds = parseInt(document.getElementById('global-init-countdown').value) || 10;
         const cards = document.querySelectorAll('.exercise-card');
         routine = Array.from(cards).map(card => ({
             name: card.querySelector('.ex-name').value,
@@ -452,8 +465,7 @@
             ecc: parseInt(card.querySelector('.ex-ecc').value) || 0,
             botP: parseInt(card.querySelector('.ex-botP').value) || 0,
             limbRest: parseInt(card.querySelector('.ex-limbRest')?.value) || 0,
-            setRest: parseInt(card.querySelector('.ex-setRest').value) || 0,
-            countdown: parseInt(card.querySelector('.ex-countdown').value) || 5
+            setRest: parseInt(card.querySelector('.ex-setRest').value) || 0
         }));
     }
 
@@ -466,7 +478,16 @@
         
         currentExIdx = 0;
         currentSetIdx = 0;
-        resetStateForSet();
+        
+        const ex = routine[currentExIdx];
+        currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
+        
+        // Inizializza il Countdown Unico Globale
+        currentState = 'COUNTDOWN';
+        phaseTotalSeconds = initialCountdownSeconds;
+        currentSecondsRemaining = phaseTotalSeconds;
+        actualReps = 0;
+        currentPhaseId++;
         
         lastPhaseId = currentPhaseId - 1; 
         updatePlayerUI(true);
@@ -476,21 +497,11 @@
         clearInterval(engineInterval);
         isRunning = false;
         document.getElementById('playBtn').innerText = 'Play';
-        document.getElementById('playBtn').classList.remove('running');
+        document.getElementById('playBtn').classList.remove('hidden');
         document.getElementById('nextSetBtn').classList.add('hidden');
         document.getElementById('failureBtn').classList.add('hidden');
         document.getElementById('player-container').classList.add('hidden');
         document.getElementById('setup-container').classList.remove('hidden');
-    }
-
-    function resetStateForSet() {
-        const ex = routine[currentExIdx];
-        currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
-        currentState = 'COUNTDOWN';
-        phaseTotalSeconds = ex.countdown;
-        currentSecondsRemaining = phaseTotalSeconds;
-        actualReps = 0;
-        currentPhaseId++;
     }
 
     function initAudio() {
@@ -542,20 +553,16 @@
             clearInterval(engineInterval);
             isRunning = false;
             btn.innerText = 'Play';
-            btn.classList.remove('running');
             updatePlayerUI(false); 
         } else {
             isRunning = true;
             btn.innerText = 'Stop';
-            btn.classList.add('running');
             tick();
             engineInterval = setInterval(tick, 1000);
         }
     }
 
     function tick() {
-        if (currentState === 'WAIT_FOR_NEXT') return; 
-
         if (currentSecondsRemaining <= 0) {
             advanceStateLogic();
         }
@@ -563,11 +570,9 @@
         let phaseChanged = (currentPhaseId !== lastPhaseId);
         lastPhaseId = currentPhaseId;
 
-        if (currentState !== 'WAIT_FOR_NEXT') {
-            playTick(currentState);
-            updatePlayerUI(phaseChanged);
-            currentSecondsRemaining--;
-        }
+        playTick(currentState);
+        updatePlayerUI(phaseChanged);
+        currentSecondsRemaining--;
     }
 
     function advanceStateLogic() {
@@ -582,6 +587,12 @@
             return;
         }
         if (currentState === 'BOTTOM_PAUSE') { handleEndRep(); return; }
+        
+        // Quando finisce il riposo del set o dell'arto, si riparte DIRETTAMENTE senza tasti intermedi
+        if (currentState === 'SET_REST' || currentState === 'LIMB_REST') {
+            goToPhase('CONCENTRIC', ex.conc);
+            return;
+        }
 
         function handleEndRep() {
             actualReps++;
@@ -606,18 +617,30 @@
         if (currentLimb === 'UNILATERAL_LEFT') {
             currentLimb = 'UNILATERAL_RIGHT';
             actualReps = 0;
-            if (ex.limbRest > 0) goToPhase('LIMB_REST', ex.limbRest);
-            else goToPhase('COUNTDOWN', ex.countdown);
+            if (ex.limbRest > 0) {
+                goToPhase('LIMB_REST', ex.limbRest);
+            } else {
+                goToPhase('CONCENTRIC', ex.conc); // Nessun rest arto? Parte subito il destro
+            }
         } else {
             currentSetIdx++;
             if (currentSetIdx < ex.sets) {
-                goToPhase('SET_REST', ex.setRest);
+                if (ex.setRest > 0) goToPhase('SET_REST', ex.setRest);
+                else startNextSetDirectly();
             } else {
+                // Esercizio concluso. Passaggio a quello successivo
                 currentExIdx++;
                 if (currentExIdx < routine.length) {
                     currentSetIdx = 0;
-                    resetStateForSet();
-                    goToPhase('SET_REST', ex.setRest);
+                    const nextEx = routine[currentExIdx];
+                    currentLimb = (nextEx.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
+                    actualReps = 0;
+                    
+                    if (ex.setRest > 0) {
+                        goToPhase('SET_REST', ex.setRest); // Sfrutta il rest dell'ultimo set per preparare il nuovo esercizio
+                    } else {
+                        startNextSetDirectly();
+                    }
                 } else {
                     clearInterval(engineInterval);
                     isRunning = false;
@@ -629,7 +652,6 @@
     }
 
     function goToPhase(nextState, duration) {
-        const ex = routine[currentExIdx];
         if (nextState === 'END_REP_CHECK') return; 
 
         currentState = nextState;
@@ -637,45 +659,30 @@
         currentSecondsRemaining = phaseTotalSeconds;
         currentPhaseId++; 
 
-        if (currentState === 'SET_REST' && phaseTotalSeconds === 0) {
-            triggerWaitState();
-        }
-        
+        // Gestione dei tempi a zero interni alle rep
         if (duration === 0 && (currentState === 'CONCENTRIC' || currentState === 'TOP_PAUSE' || currentState === 'ECCENTRIC' || currentState === 'BOTTOM_PAUSE')) {
             advanceStateLogic();
         }
     }
 
-    function triggerWaitState() {
-        currentState = 'WAIT_FOR_NEXT';
-        currentSecondsRemaining = 0;
-        phaseTotalSeconds = 0;
-        currentPhaseId++;
-        document.getElementById('playBtn').classList.add('hidden');
-        document.getElementById('nextSetBtn').classList.remove('hidden');
-        document.getElementById('failureBtn').classList.add('hidden');
+    function startNextSetDirectly() {
+        const ex = routine[currentExIdx];
+        currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
+        actualReps = 0;
+        goToPhase('CONCENTRIC', ex.conc);
     }
 
     function manualNextSet() {
-        document.getElementById('nextSetBtn').classList.add('hidden');
-        document.getElementById('playBtn').classList.remove('hidden');
-        resetStateForSet();
-        
-        lastPhaseId = currentPhaseId - 1;
-        updatePlayerUI(true);
-        if(!isRunning) {
-            toggleEngine();
+        // Permette di saltare i tempi di recupero (Limb o Set Rest) se ci si sente pronti prima
+        if(currentState === 'SET_REST' || currentState === 'LIMB_REST') {
+            currentSecondsRemaining = 0;
+            advanceStateLogic();
         }
     }
 
     function updatePlayerUI(phaseChanged) {
         const ex = routine[currentExIdx];
         if (!ex) return;
-
-        if (currentState === 'SET_REST' && currentSecondsRemaining < 0) {
-            triggerWaitState();
-            phaseChanged = true;
-        }
 
         document.getElementById('current-ex-name').innerText = ex.name;
         document.getElementById('current-set-hub').innerText = `SET ${currentSetIdx + 1}/${ex.sets}`;
@@ -690,18 +697,26 @@
         document.getElementById('status-limb').innerText = limbText;
 
         const failureBtn = document.getElementById('failureBtn');
+        const nextSetBtn = document.getElementById('nextSetBtn');
         const isAnActivePhase = (currentState === 'CONCENTRIC' || currentState === 'TOP_PAUSE' || currentState === 'ECCENTRIC' || currentState === 'BOTTOM_PAUSE');
+        
         if(isRunning && isAnActivePhase) {
             failureBtn.classList.remove('hidden');
         } else {
             failureBtn.classList.add('hidden');
         }
 
+        if(currentState === 'SET_REST' || currentState === 'LIMB_REST') {
+            nextSetBtn.classList.remove('hidden');
+        } else {
+            nextSetBtn.classList.add('hidden');
+        }
+
         const display = document.getElementById('timer-display');
         const title = document.getElementById('phase-title');
         const piston = document.getElementById('piston-weight');
 
-        display.innerText = currentState === 'WAIT_FOR_NEXT' ? 'GO' : currentSecondsRemaining;
+        display.innerText = currentSecondsRemaining;
 
         let colorVar = '--color-idle';
         let startBottom = '0%';
@@ -714,7 +729,6 @@
             case 'BOTTOM_PAUSE': colorVar = '--color-pause'; title.innerText = "Iso Low"; startBottom = '0%'; break;
             case 'LIMB_REST': colorVar = '--color-rest'; title.innerText = "Limb Switch"; startBottom = '0%'; break;
             case 'SET_REST': colorVar = '--color-rest'; title.innerText = "Set Rest"; startBottom = '0%'; break;
-            case 'WAIT_FOR_NEXT': colorVar = '--success'; title.innerText = "Ready?"; startBottom = '0%'; break;
         }
 
         if (phaseChanged) {
@@ -737,23 +751,18 @@
             piston.style.background = `var(${colorVar})`;
         }
 
-        if (currentState !== 'WAIT_FOR_NEXT') {
-            let targetSeconds = isRunning ? (currentSecondsRemaining - 1) : currentSecondsRemaining;
-            let targetPct = phaseTotalSeconds > 0 ? (targetSeconds / phaseTotalSeconds) : 0;
-            ring.style.strokeDashoffset = ringCircumference * (1 - targetPct);
+        let targetSeconds = isRunning ? (currentSecondsRemaining - 1) : currentSecondsRemaining;
+        let targetPct = phaseTotalSeconds > 0 ? (targetSeconds / phaseTotalSeconds) : 0;
+        ring.style.strokeDashoffset = ringCircumference * (1 - targetPct);
 
-            let completedFactor = phaseTotalSeconds > 0 ? ((phaseTotalSeconds - targetSeconds) / phaseTotalSeconds) : 0;
-            if (currentState === 'CONCENTRIC') {
-                piston.style.bottom = (completedFactor * 90) + '%';
-            } else if (currentState === 'TOP_PAUSE') {
-                piston.style.bottom = '90%';
-            } else if (currentState === 'ECCENTRIC') {
-                piston.style.bottom = (90 - (completedFactor * 90)) + '%';
-            } else {
-                piston.style.bottom = '0%';
-            }
+        let completedFactor = phaseTotalSeconds > 0 ? ((phaseTotalSeconds - targetSeconds) / phaseTotalSeconds) : 0;
+        if (currentState === 'CONCENTRIC') {
+            piston.style.bottom = (completedFactor * 90) + '%';
+        } else if (currentState === 'TOP_PAUSE') {
+            piston.style.bottom = '90%';
+        } else if (currentState === 'ECCENTRIC') {
+            piston.style.bottom = (90 - (completedFactor * 90)) + '%';
         } else {
-            ring.style.strokeDashoffset = 0;
             piston.style.bottom = '0%';
         }
     }
