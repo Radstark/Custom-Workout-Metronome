@@ -324,7 +324,7 @@
 
 <script>
     let routine = [];
-    let workoutHistory = []; // Array per tracciare le ripetizioni effettive
+    let workoutHistory = []; 
     let currentExIdx = 0;
     let currentSetIdx = 0;
     let currentLimb = 'UNILATERAL_LEFT';
@@ -501,7 +501,6 @@
         currentExIdx = 0;
         currentSetIdx = 0;
         
-        // Struttura la cronologia vuota ad inizio allenamento
         workoutHistory = routine.map(ex => ({
             name: ex.name,
             type: ex.type,
@@ -604,6 +603,14 @@
         currentSecondsRemaining--;
     }
 
+    // Funzione di transizione di stato centralizzata
+    function goToPhase(phase, seconds) {
+        currentState = phase;
+        phaseTotalSeconds = seconds;
+        currentSecondsRemaining = seconds;
+        currentPhaseId++;
+    }
+
     function advanceStateLogic() {
         const ex = routine[currentExIdx];
 
@@ -643,7 +650,6 @@
     function closeActiveLimbOrSet() {
         const ex = routine[currentExIdx];
         
-        // 1. SALVATAGGIO REPS NELLA CRONOLOGIA (Prima dei reset)
         if (ex.type === 'unilateral') {
             if (!workoutHistory[currentExIdx].sets[currentSetIdx]) {
                 workoutHistory[currentExIdx].sets[currentSetIdx] = { L: 0, R: 0 };
@@ -651,16 +657,14 @@
             
             if (currentLimb === 'UNILATERAL_LEFT') {
                 workoutHistory[currentExIdx].sets[currentSetIdx].L = actualReps;
-                
-                // Transizione atomica al braccio destro nello stesso set
                 currentLimb = 'UNILATERAL_RIGHT';
-                actualReps = 0; // Reset parziale delle reps interne per il lato destro
+                actualReps = 0; 
                 if (ex.limbRest > 0) {
                     goToPhase('LIMB_REST', ex.limbRest);
                 } else {
                     goToPhase('CONCENTRIC', ex.conc);
                 }
-                return; // Interrompe qui per evitare l'avanzamento del set completo
+                return; 
             } else {
                 workoutHistory[currentExIdx].sets[currentSetIdx].R = actualReps;
             }
@@ -668,21 +672,17 @@
             workoutHistory[currentExIdx].sets[currentSetIdx] = actualReps;
         }
 
-        // 2. RESET TOTALI & AVANZAMENTO DEL SET (Eseguiti solo a set realmente finito)
         currentSetIdx++;
-        actualReps = 0; // RISOLTO BUG 1: Il counter si azzera matematicamente per la serie successiva
+        actualReps = 0; 
         
         if (currentSetIdx < ex.sets) {
-            // RISOLTO BUG 2: Ripristina l'orientamento corretto del braccio per il set successivo
             currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
-            
             if (ex.setRest > 0) {
                 goToPhase('SET_REST', ex.setRest);
             } else {
                 goToPhase('CONCENTRIC', ex.conc);
             }
         } else {
-            // 3. AVANZAMENTO ESERCIZIO
             currentExIdx++;
             if (currentExIdx < routine.length) {
                 currentSetIdx = 0;
@@ -695,7 +695,6 @@
                     goToPhase('CONCENTRIC', nextEx.conc);
                 }
             } else {
-                // FINE ALLENAMENTO -> Mostra report visivo
                 clearInterval(engineInterval);
                 isRunning = false;
                 showWorkoutSummary();
@@ -710,7 +709,6 @@
         }
     }
 
-    // NUOVA FUNZIONE: Genera lo schermo di riepilogo a fine sessione
     function showWorkoutSummary() {
         document.getElementById('player-container').classList.add('hidden');
         const summaryContainer = document.getElementById('summary-container');
