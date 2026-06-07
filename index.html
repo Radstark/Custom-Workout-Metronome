@@ -172,7 +172,6 @@
             transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
         }
         
-        /* Font scalati millimetricamente sul viewBox 150x150 dell'SVG */
         #timer-display {
             font-size: 44px; 
             font-weight: 900;
@@ -257,7 +256,6 @@
                 width: 180px;
                 height: 180px;
             }
-            /* Rimosso ogni ridimensionamento distruttivo del font. L'SVG scala nativamente in pixel */
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
         }
@@ -316,10 +314,17 @@
             </div>
         </div>
     </div>
+
+    <div id="summary-container" class="hidden setup-mode">
+        <h1>Session Report</h1>
+        <div id="summary-results"></div>
+        <button class="action-btn start-workout-btn" onclick="backToSetup()">Back to Setup</button>
+    </div>
 </div>
 
 <script>
     let routine = [];
+    let workoutHistory = []; // Array per tracciare le ripetizioni effettive
     let currentExIdx = 0;
     let currentSetIdx = 0;
     let currentLimb = 'UNILATERAL_LEFT';
@@ -490,10 +495,18 @@
         if(routine.length === 0) return alert("Add at least one exercise!");
         
         document.getElementById('setup-container').classList.add('hidden');
+        document.getElementById('summary-container').classList.add('hidden');
         document.getElementById('player-container').classList.remove('hidden');
         
         currentExIdx = 0;
         currentSetIdx = 0;
+        
+        // Struttura la cronologia vuota ad inizio allenamento
+        workoutHistory = routine.map(ex => ({
+            name: ex.name,
+            type: ex.type,
+            sets: [] 
+        }));
         
         const ex = routine[currentExIdx];
         currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
@@ -516,6 +529,7 @@
         document.getElementById('nextSetBtn').classList.add('hidden');
         document.getElementById('failureBtn').classList.add('hidden');
         document.getElementById('player-container').classList.add('hidden');
+        document.getElementById('summary-container').classList.add('hidden');
         document.getElementById('setup-container').classList.remove('hidden');
     }
 
@@ -628,60 +642,65 @@
 
     function closeActiveLimbOrSet() {
         const ex = routine[currentExIdx];
-        if (currentLimb === 'UNILATERAL_LEFT') {
-            currentLimb = 'UNILATERAL_RIGHT';
-            actualReps = 0;
-            if (ex.limbRest > 0) {
-                goToPhase('LIMB_REST', ex.limbRest);
+        
+        // 1. SALVATAGGIO REPS NELLA CRONOLOGIA (Prima dei reset)
+        if (ex.type === 'unilateral') {
+            if (!workoutHistory[currentExIdx].sets[currentSetIdx]) {
+                workoutHistory[currentExIdx].sets[currentSetIdx] = { L: 0, R: 0 };
+            }
+            
+            if (currentLimb === 'UNILATERAL_LEFT') {
+                workoutHistory[currentExIdx].sets[currentSetIdx].L = actualReps;
+                
+                // Transizione atomica al braccio destro nello stesso set
+                currentLimb = 'UNILATERAL_RIGHT';
+                actualReps = 0; // Reset parziale delle reps interne per il lato destro
+                if (ex.limbRest > 0) {
+                    goToPhase('LIMB_REST', ex.limbRest);
+                } else {
+                    goToPhase('CONCENTRIC', ex.conc);
+                }
+                return; // Interrompe qui per evitare l'avanzamento del set completo
+            } else {
+                workoutHistory[currentExIdx].sets[currentSetIdx].R = actualReps;
+            }
+        } else {
+            workoutHistory[currentExIdx].sets[currentSetIdx] = actualReps;
+        }
+
+        // 2. RESET TOTALI & AVANZAMENTO DEL SET (Eseguiti solo a set realmente finito)
+        currentSetIdx++;
+        actualReps = 0; // RISOLTO BUG 1: Il counter si azzera matematicamente per la serie successiva
+        
+        if (currentSetIdx < ex.sets) {
+            // RISOLTO BUG 2: Ripristina l'orientamento corretto del braccio per il set successivo
+            currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
+            
+            if (ex.setRest > 0) {
+                goToPhase('SET_REST', ex.setRest);
             } else {
                 goToPhase('CONCENTRIC', ex.conc);
             }
         } else {
-            currentSetIdx++;
-            if (currentSetIdx < ex.sets) {
-                if (ex.setRest > 0) goToPhase('SET_REST', ex.setRest);
-                else startNextSetDirectly();
-            } else {
-                currentExIdx++;
-                if (currentExIdx < routine.length) {
-                    currentSetIdx = 0;
-                    const nextEx = routine[currentExIdx];
-                    currentLimb = (nextEx.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
-                    actualReps = 0;
-                    
-                    if (ex.setRest > 0) {
-                        goToPhase('SET_REST', ex.setRest);
-                    } else {
-                        startNextSetDirectly();
-                    }
+            // 3. AVANZAMENTO ESERCIZIO
+            currentExIdx++;
+            if (currentExIdx < routine.length) {
+                currentSetIdx = 0;
+                const nextEx = routine[currentExIdx];
+                currentLimb = (nextEx.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
+                
+                if (ex.setRest > 0) {
+                    goToPhase('SET_REST', ex.setRest);
                 } else {
-                    clearInterval(engineInterval);
-                    isRunning = false;
-                    alert("🏆 CONGRATULATIONS! You have completed your workout session.");
-                    stopWorkout();
+                    goToPhase('CONCENTRIC', nextEx.conc);
                 }
+            } else {
+                // FINE ALLENAMENTO -> Mostra report visivo
+                clearInterval(engineInterval);
+                isRunning = false;
+                showWorkoutSummary();
             }
         }
-    }
-
-    function goToPhase(nextState, duration) {
-        if (nextState === 'END_REP_CHECK') return; 
-
-        currentState = nextState;
-        phaseTotalSeconds = duration;
-        currentSecondsRemaining = phaseTotalSeconds;
-        currentPhaseId++; 
-
-        if (duration === 0 && (currentState === 'CONCENTRIC' || currentState === 'TOP_PAUSE' || currentState === 'ECCENTRIC' || currentState === 'BOTTOM_PAUSE')) {
-            advanceStateLogic();
-        }
-    }
-
-    function startNextSetDirectly() {
-        const ex = routine[currentExIdx];
-        currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
-        actualReps = 0;
-        goToPhase('CONCENTRIC', ex.conc);
     }
 
     function manualNextSet() {
@@ -689,6 +708,46 @@
             currentSecondsRemaining = 0;
             advanceStateLogic();
         }
+    }
+
+    // NUOVA FUNZIONE: Genera lo schermo di riepilogo a fine sessione
+    function showWorkoutSummary() {
+        document.getElementById('player-container').classList.add('hidden');
+        const summaryContainer = document.getElementById('summary-container');
+        summaryContainer.classList.remove('hidden');
+        
+        const resultsDiv = document.getElementById('summary-results');
+        resultsDiv.innerHTML = '';
+        
+        workoutHistory.forEach(ex => {
+            const row = document.createElement('div');
+            row.className = 'status-panel';
+            row.style.marginBottom = '15px';
+            row.style.padding = '14px';
+            
+            let repsText = '';
+            if (ex.type === 'unilateral') {
+                repsText = ex.sets.map(set => set ? `${set.L}/${set.R}` : '-/-').join('  |  ');
+            } else {
+                repsText = ex.sets.map(set => set !== undefined ? set : '-').join('  -  ');
+            }
+            
+            row.innerHTML = `
+                <div class="status-row" style="font-size: 1.05rem; margin-bottom: 6px;">
+                    <span class="label" style="color: var(--text-main); font-weight: 700;">${ex.name}</span>
+                    <span class="val" style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">${ex.type}</span>
+                </div>
+                <div class="status-row">
+                    <span class="val" style="color: var(--accent); font-size: 1.2rem; font-weight: 800; letter-spacing:0.5px;">${repsText || 'No sets recorded'}</span>
+                </div>
+            `;
+            resultsDiv.appendChild(row);
+        });
+    }
+
+    function backToSetup() {
+        document.getElementById('summary-container').classList.add('hidden');
+        document.getElementById('setup-container').classList.remove('hidden');
     }
 
     function updatePlayerUI(phaseChanged) {
@@ -727,7 +786,6 @@
         const title = document.getElementById('phase-title');
         const piston = document.getElementById('piston-weight');
 
-        // Sostituito innerText con textContent per compatibilità SVG nativa su mobile
         display.textContent = currentSecondsRemaining;
 
         let colorVar = '--color-idle';
