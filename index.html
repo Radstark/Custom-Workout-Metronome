@@ -207,11 +207,12 @@
         .status-row { display: flex; justify-content: space-between; font-size: 0.95rem; }
         .status-row .label { color: var(--text-muted); font-weight: 600; }
         .status-row .val { font-weight: 700; }
+        .history-accent { color: var(--accent); font-weight: 800; letter-spacing: 0.5px; }
         
         .player-controls { display: flex; flex-direction: column; gap: 12px; }
         .controls-row { display: flex; gap: 12px; width: 100%; }
         .controls-row button { flex: 1; }
-        .btn-danger { background-color: #ef4444; }
+        .btn-safe-edit { background-color: #475569; font-size: 0.85rem; padding: 10px; margin-top: 8px; }
         .btn-warning { background-color: var(--color-countdown); }
         .btn-failure { background-color: #f59e0b; color: #0f172a; font-weight: 800; padding: 16px; }
 
@@ -258,6 +259,7 @@
             }
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
+            .btn-safe-edit { padding: 12px; margin-top: 12px; }
         }
     </style>
 </head>
@@ -303,6 +305,7 @@
             <div class="status-row"><span class="label">Execution Mode:</span><span id="status-mode" class="val">--</span></div>
             <div class="status-row"><span class="label">Active Limb:</span><span id="status-limb" class="val">--</span></div>
             <div class="status-row"><span class="label">Reps Counter:</span><span id="status-reps" class="val">0</span></div>
+            <div id="partial-history-row" class="status-row hidden"><span class="label">Set completed history:</span><span id="status-partial" class="val history-accent">--</span></div>
         </div>
 
         <div class="player-controls">
@@ -310,8 +313,8 @@
             <div class="controls-row">
                 <button id="playBtn" class="action-btn" onclick="toggleEngine()">Play</button>
                 <button id="nextSetBtn" class="action-btn btn-warning hidden" onclick="manualNextSet()">Skip Rest</button>
-                <button class="action-btn btn-danger" onclick="stopWorkout()">Edit Routine</button>
             </div>
+            <button class="action-btn btn-safe-edit" onclick="stopWorkout()">⚙️ Edit Routine</button>
         </div>
     </div>
 
@@ -341,12 +344,19 @@
     let isRunning = false;
     let engineInterval = null;
     let audioCtx = null;
+    let silentAudioLoop = null; // Traccia di aggancio per i tasti fisici Bluetooth
 
     const ring = document.getElementById('progress-ring');
     const ringCircumference = 2 * Math.PI * 60;
     ring.style.strokeDasharray = ringCircumference;
 
     function init() {
+        // Setup iniziale dei listener di sistema per auricolari
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('play', () => { if (!isRunning) toggleEngine(); });
+            navigator.mediaSession.setActionHandler('pause', () => { if (isRunning) toggleEngine(); });
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const dataParam = urlParams.get('data');
         if (dataParam) {
@@ -521,8 +531,15 @@
     }
 
     function stopWorkout() {
+        // Blocco di sicurezza anti-interruzione accidentale
+        if (currentState !== 'NOT_STARTED' && isRunning) {
+            if (!confirm("⚠️ EDIT BUTTON PRESSED: Are you sure you want to stop the timer? Any partial data for this workout will be lost.")) {
+                return;
+            }
+        }
         clearInterval(engineInterval);
         isRunning = false;
+        if(silentAudioLoop) silentAudioLoop.pause();
         document.getElementById('playBtn').innerText = 'Play';
         document.getElementById('playBtn').classList.remove('hidden');
         document.getElementById('nextSetBtn').classList.add('hidden');
@@ -530,6 +547,7 @@
         document.getElementById('player-container').classList.add('hidden');
         document.getElementById('summary-container').classList.add('hidden');
         document.getElementById('setup-container').classList.remove('hidden');
+        currentState = 'NOT_STARTED';
     }
 
     function initAudio() {
@@ -581,10 +599,23 @@
             clearInterval(engineInterval);
             isRunning = false;
             btn.innerText = 'Play';
+            if (silentAudioLoop) silentAudioLoop.pause();
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
             updatePlayerUI(false); 
         } else {
             isRunning = true;
             btn.innerText = 'Stop';
+
+            // Iniezione traccia muta per intercettare i comandi fisici del bluetooth mobile
+            if (!silentAudioLoop) {
+                silentAudioLoop = document.createElement('audio');
+                silentAudioLoop.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
+                silentAudioLoop.loop = true;
+            }
+            silentAudioLoop.play().catch(() => console.log("MediaSession bridge running"));
+
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+
             tick();
             engineInterval = setInterval(tick, 1000);
         }
@@ -603,7 +634,6 @@
         currentSecondsRemaining--;
     }
 
-    // Funzione di transizione di stato centralizzata
     function goToPhase(phase, seconds) {
         currentState = phase;
         phaseTotalSeconds = seconds;
@@ -697,6 +727,7 @@
             } else {
                 clearInterval(engineInterval);
                 isRunning = false;
+                if(silentAudioLoop) silentAudioLoop.pause();
                 showWorkoutSummary();
             }
         }
@@ -763,6 +794,36 @@
         if(currentLimb === 'UNILATERAL_LEFT') limbText = "Left Limb / 1st";
         if(currentLimb === 'UNILATERAL_RIGHT') limbText = "Right Limb / 2nd";
         document.getElementById('status-limb').innerText = limbText;
+
+        // Logica per mostrare lo storico dei set fatti solo durante il riposo (Post-Set o Limb Switch)
+        const partialRow = document.getElementById('partial-history-row');
+        const partialStatus = document.getElementById('status-partial');
+        if (currentState === 'SET_REST' || currentState === 'LIMB_REST') {
+            partialRow.classList.remove('hidden');
+            let histEx = workoutHistory[currentExIdx];
+            if (histEx && histEx.sets.length > 0) {
+                if (histEx.type === 'unilateral') {
+                    // Mappa la struttura L/R per i set finora salvati
+                    partialStatus.innerText = histEx.sets.map(s => s ? `${s.L}/${s.R}` : '-/-').join(' | ');
+                } else {
+                    partialStatus.innerText = histEx.sets.map(s => s !== undefined ? s : '-').join(' - ');
+                }
+            } else {
+                partialStatus.innerText = 'No sets tracked yet';
+            }
+        } else {
+            partialRow.classList.add('hidden');
+        }
+
+        // Metadati dinamici per lo schermo bloccato del telefono / auricolari
+        if ('mediaSession' in navigator) {
+            let statusLabel = (currentState === 'SET_REST' || currentState === 'LIMB_REST') ? 'Resting Phase' : 'Repetition Cycle';
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: `${ex.name} (Set ${currentSetIdx + 1}/${ex.sets})`,
+                artist: statusLabel,
+                album: 'Tempo Metronome'
+            });
+        }
 
         const failureBtn = document.getElementById('failureBtn');
         const nextSetBtn = document.getElementById('nextSetBtn');
