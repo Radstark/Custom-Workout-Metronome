@@ -288,9 +288,7 @@
             <div class="circle-box">
                 <svg viewBox="0 0 150 150" width="100%" height="100%">
                     <circle class="circle-bg" cx="75" cy="75" r="60"></circle>
-                    
                     <circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="60" transform="rotate(-90 75 75)"></circle>
-                    
                     <text id="timer-display" x="75" y="75" text-anchor="middle">--</text>
                     <text id="phase-title" x="75" y="112" text-anchor="middle">Ready</text>
                 </svg>
@@ -344,14 +342,13 @@
     let isRunning = false;
     let engineInterval = null;
     let audioCtx = null;
-    let silentAudioLoop = null; // Traccia di aggancio per i tasti fisici Bluetooth
+    let silentAudioLoop = null; 
 
     const ring = document.getElementById('progress-ring');
     const ringCircumference = 2 * Math.PI * 60;
     ring.style.strokeDasharray = ringCircumference;
 
     function init() {
-        // Setup iniziale dei listener di sistema per auricolari
         if ('mediaSession' in navigator) {
             navigator.mediaSession.setActionHandler('play', () => { if (!isRunning) toggleEngine(); });
             navigator.mediaSession.setActionHandler('pause', () => { if (isRunning) toggleEngine(); });
@@ -504,6 +501,10 @@
         buildRoutineFromDOM();
         if(routine.length === 0) return alert("Add at least one exercise!");
         
+        // Protezione preventiva contro loop infiniti (almeno una fase deve essere > 0)
+        const invalidEx = routine.find(ex => ex.conc === 0 && ex.topP === 0 && ex.ecc === 0 && ex.botP === 0);
+        if (invalidEx) return alert(`L'esercizio "${invalidEx.name}" deve avere almeno una fase del tempo maggiore di 0 secondi!`);
+        
         document.getElementById('setup-container').classList.add('hidden');
         document.getElementById('summary-container').classList.add('hidden');
         document.getElementById('player-container').classList.remove('hidden');
@@ -531,15 +532,15 @@
     }
 
     function stopWorkout() {
-        // Blocco di sicurezza anti-interruzione accidentale
         if (currentState !== 'NOT_STARTED' && isRunning) {
-            if (!confirm("⚠️ EDIT BUTTON PRESSED: Are you sure you want to stop the timer? Any partial data for this workout will be lost.")) {
+            if (!confirm("⚠️ TASTO EDIT PREMUTO: Vuoi davvero interrompere il timer? I dati parziali di questo allenamento andranno persi.")) {
                 return;
             }
         }
         clearInterval(engineInterval);
         isRunning = false;
         if(silentAudioLoop) silentAudioLoop.pause();
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         document.getElementById('playBtn').innerText = 'Play';
         document.getElementById('playBtn').classList.remove('hidden');
         document.getElementById('nextSetBtn').classList.add('hidden');
@@ -558,18 +559,13 @@
     function shouldPlayRestTick(sec) {
         if (sec <= 10 && sec >= 0) return true;
         if (sec === 15) return true;
-        if (sec <= 120 && sec >= 30) {
-            return (sec % 30 === 0);
-        }
-        if (sec > 120) {
-            return (sec % 60 === 0);
-        }
+        if (sec <= 120 && sec >= 30) return (sec % 30 === 0);
+        if (sec > 120) return (sec % 60 === 0);
         return false;
     }
 
     function playTick(state) {
         initAudio();
-        
         if (state === 'LIMB_REST' || state === 'SET_REST') {
             if (!shouldPlayRestTick(currentSecondsRemaining)) return;
         }
@@ -606,15 +602,39 @@
             isRunning = true;
             btn.innerText = 'Stop';
 
-            // Iniezione traccia muta per intercettare i comandi fisici del bluetooth mobile
             if (!silentAudioLoop) {
                 silentAudioLoop = document.createElement('audio');
-                silentAudioLoop.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
+                
+                const sampleRate = 8000;
+                const numChannels = 1;
+                const bitsPerSample = 16;
+                const numSamples = sampleRate * 2; 
+                const dataSize = numSamples * numChannels * (bitsPerSample / 8);
+                const buffer = new ArrayBuffer(44 + dataSize);
+                const view = new DataView(buffer);
+                
+                view.setUint32(0, 0x52494646, false); 
+                view.setUint32(4, 36 + dataSize, true);
+                view.setUint32(8, 0x57415645, false); 
+                view.setUint32(12, 0x666d7420, false); 
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, numChannels, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
+                view.setUint16(32, numChannels * (bitsPerSample / 8), true);
+                view.setUint16(34, bitsPerSample, true);
+                view.setUint32(36, 0x64617461, false); 
+                view.setUint32(40, dataSize, true);
+                
+                const blob = new Blob([view], { type: 'audio/wav' });
+                silentAudioLoop.src = URL.createObjectURL(blob);
                 silentAudioLoop.loop = true;
             }
-            silentAudioLoop.play().catch(() => console.log("MediaSession bridge running"));
 
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+            silentAudioLoop.play().then(() => {
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+            }).catch(err => console.log("MediaSession sync blocked:", err));
 
             tick();
             engineInterval = setInterval(tick, 1000);
@@ -641,31 +661,43 @@
         currentPhaseId++;
     }
 
+    // MACCHINA A STATI AD ACCOPPIAMENTO DINAMICO
+    // Salta istantaneamente a livello di millisecondi qualsiasi fase impostata a 0
     function advanceStateLogic() {
+        launchNextActivePhaseFrom(currentState);
+    }
+
+    function launchNextActivePhaseFrom(current) {
         const ex = routine[currentExIdx];
-
-        if (currentState === 'COUNTDOWN') { goToPhase('CONCENTRIC', ex.conc); return; }
-        if (currentState === 'CONCENTRIC') { goToPhase(ex.topP > 0 ? 'TOP_PAUSE' : 'ECCENTRIC', ex.topP > 0 ? ex.topP : ex.ecc); return; }
-        if (currentState === 'TOP_PAUSE') { goToPhase('ECCENTRIC', ex.ecc); return; }
-        if (currentState === 'ECCENTRIC') {
-            goToPhase(ex.botP > 0 ? 'BOTTOM_PAUSE' : 'END_REP_CHECK', ex.botP > 0 ? ex.botP : 0);
-            if (ex.botP === 0) handleEndRep();
-            return;
-        }
-        if (currentState === 'BOTTOM_PAUSE') { handleEndRep(); return; }
         
-        if (currentState === 'SET_REST' || currentState === 'LIMB_REST') {
-            goToPhase('CONCENTRIC', ex.conc);
-            return;
+        if (current === 'COUNTDOWN' || current === 'SET_REST' || current === 'LIMB_REST') {
+            if (ex.conc > 0) { goToPhase('CONCENTRIC', ex.conc); return; }
+            current = 'CONCENTRIC';
         }
+        if (current === 'CONCENTRIC') {
+            if (ex.topP > 0) { goToPhase('TOP_PAUSE', ex.topP); return; }
+            current = 'TOP_PAUSE';
+        }
+        if (current === 'TOP_PAUSE') {
+            if (ex.ecc > 0) { goToPhase('ECCENTRIC', ex.ecc); return; }
+            current = 'ECCENTRIC';
+        }
+        if (current === 'ECCENTRIC') {
+            if (ex.botP > 0) { goToPhase('BOTTOM_PAUSE', ex.botP); return; }
+            current = 'BOTTOM_PAUSE';
+        }
+        if (current === 'BOTTOM_PAUSE') {
+            handleEndRep();
+        }
+    }
 
-        function handleEndRep() {
-            actualReps++;
-            if (ex.reps > 0 && actualReps >= ex.reps) {
-                closeActiveLimbOrSet();
-            } else {
-                goToPhase('CONCENTRIC', ex.conc);
-            }
+    function handleEndRep() {
+        const ex = routine[currentExIdx];
+        actualReps++;
+        if (ex.reps > 0 && actualReps >= ex.reps) {
+            closeActiveLimbOrSet();
+        } else {
+            launchNextActivePhaseFrom('COUNTDOWN'); 
         }
     }
 
@@ -692,7 +724,7 @@
                 if (ex.limbRest > 0) {
                     goToPhase('LIMB_REST', ex.limbRest);
                 } else {
-                    goToPhase('CONCENTRIC', ex.conc);
+                    launchNextActivePhaseFrom('COUNTDOWN');
                 }
                 return; 
             } else {
@@ -710,7 +742,7 @@
             if (ex.setRest > 0) {
                 goToPhase('SET_REST', ex.setRest);
             } else {
-                goToPhase('CONCENTRIC', ex.conc);
+                launchNextActivePhaseFrom('COUNTDOWN');
             }
         } else {
             currentExIdx++;
@@ -722,12 +754,13 @@
                 if (ex.setRest > 0) {
                     goToPhase('SET_REST', ex.setRest);
                 } else {
-                    goToPhase('CONCENTRIC', nextEx.conc);
+                    launchNextActivePhaseFrom('COUNTDOWN');
                 }
             } else {
                 clearInterval(engineInterval);
                 isRunning = false;
                 if(silentAudioLoop) silentAudioLoop.pause();
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
                 showWorkoutSummary();
             }
         }
@@ -795,7 +828,6 @@
         if(currentLimb === 'UNILATERAL_RIGHT') limbText = "Right Limb / 2nd";
         document.getElementById('status-limb').innerText = limbText;
 
-        // Logica per mostrare lo storico dei set fatti solo durante il riposo (Post-Set o Limb Switch)
         const partialRow = document.getElementById('partial-history-row');
         const partialStatus = document.getElementById('status-partial');
         if (currentState === 'SET_REST' || currentState === 'LIMB_REST') {
@@ -803,7 +835,6 @@
             let histEx = workoutHistory[currentExIdx];
             if (histEx && histEx.sets.length > 0) {
                 if (histEx.type === 'unilateral') {
-                    // Mappa la struttura L/R per i set finora salvati
                     partialStatus.innerText = histEx.sets.map(s => s ? `${s.L}/${s.R}` : '-/-').join(' | ');
                 } else {
                     partialStatus.innerText = histEx.sets.map(s => s !== undefined ? s : '-').join(' - ');
@@ -815,7 +846,6 @@
             partialRow.classList.add('hidden');
         }
 
-        // Metadati dinamici per lo schermo bloccato del telefono / auricolari
         if ('mediaSession' in navigator) {
             let statusLabel = (currentState === 'SET_REST' || currentState === 'LIMB_REST') ? 'Resting Phase' : 'Repetition Cycle';
             navigator.mediaSession.metadata = new MediaMetadata({
