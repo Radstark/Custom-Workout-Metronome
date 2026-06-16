@@ -157,11 +157,7 @@
             width: 100%;
             height: 100%;
         }
-        .circle-bg { 
-            fill: none; 
-            stroke: #1e293b; 
-            stroke-width: 8; 
-        }
+        .circle-bg { fill: none; stroke: #1e293b; stroke-width: 8; }
         .circle-progress {
             fill: none;
             stroke: var(--color-idle);
@@ -228,12 +224,8 @@
             cursor: pointer;
         }
 
-        /* MEDIA QUERY RESPONSIVE COMPLETA PER SMARTPHONE */
         @media (max-width: 480px) {
-            body {
-                padding: 0;
-                background-color: var(--bg-color);
-            }
+            body { padding: 0; background-color: var(--bg-color); }
             .container {
                 border-radius: 0;
                 box-shadow: none;
@@ -249,14 +241,8 @@
                 gap: 10px;
                 margin-bottom: 10px;
             }
-            .form-grid-4x1 {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-            }
-            .circle-box {
-                width: 180px;
-                height: 180px;
-            }
+            .form-grid-4x1 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .circle-box { width: 180px; height: 180px; }
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
             .btn-safe-edit { padding: 12px; margin-top: 12px; }
@@ -395,7 +381,7 @@
     }
 
     function addDefaultExercise() {
-        routine = [{ name: "Bench Press", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 90 }];
+        routine = [{ name: "Bench Press", type: "bilateral", sets: 3, reps: 0, conc: 2, topP: 0, ecc: 3, botP: 1, limbRest: 0, setRest: 90, startWithEccentric: true }];
         initialCountdownSeconds = 10;
         document.getElementById('global-init-countdown').value = initialCountdownSeconds;
         renderExercisesFromData();
@@ -425,6 +411,11 @@
                     <option value="bilateral" ${ex.type === 'bilateral' ? 'selected' : ''}>Bilateral (Single Set)</option>
                     <option value="unilateral" ${ex.type === 'unilateral' ? 'selected' : ''}>Unilateral (One side)</option>
                 </select>
+            </div>
+
+            <div class="form-group" style="flex-direction: row; align-items: center; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
+                <input type="checkbox" class="ex-start-ecc" ${ex.startWithEccentric ? 'checked' : ''} onchange="saveStateToURL()" style="width: 18px !important; min-width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                <label style="cursor: pointer; font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Start with Eccentric phase (e.g. Bench, Squat)</label>
             </div>
 
             <div class="mobile-split-row">
@@ -468,7 +459,7 @@
 
     function addExerciseField() {
         buildRoutineFromDOM();
-        routine.push({ name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60 });
+        routine.push({ name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60, startWithEccentric: false });
         renderExercisesFromData();
         saveStateToURL();
     }
@@ -493,7 +484,8 @@
             ecc: parseInt(card.querySelector('.ex-ecc').value) || 0,
             botP: parseInt(card.querySelector('.ex-botP').value) || 0,
             limbRest: parseInt(card.querySelector('.ex-limbRest')?.value) || 0,
-            setRest: parseInt(card.querySelector('.ex-setRest').value) || 0
+            setRest: parseInt(card.querySelector('.ex-setRest').value) || 0,
+            startWithEccentric: card.querySelector('.ex-start-ecc').checked
         }));
     }
 
@@ -501,7 +493,6 @@
         buildRoutineFromDOM();
         if(routine.length === 0) return alert("Add at least one exercise!");
         
-        // Protezione preventiva contro loop infiniti (almeno una fase deve essere > 0)
         const invalidEx = routine.find(ex => ex.conc === 0 && ex.topP === 0 && ex.ecc === 0 && ex.botP === 0);
         if (invalidEx) return alert(`L'esercizio "${invalidEx.name}" deve avere almeno una fase del tempo maggiore di 0 secondi!`);
         
@@ -661,33 +652,56 @@
         currentPhaseId++;
     }
 
-    // MACCHINA A STATI AD ACCOPPIAMENTO DINAMICO
-    // Salta istantaneamente a livello di millisecondi qualsiasi fase impostata a 0
     function advanceStateLogic() {
         launchNextActivePhaseFrom(currentState);
     }
 
+    // GESTORE DINAMICO DEL FLUSSO AUDIO/TEMPORALE
     function launchNextActivePhaseFrom(current) {
         const ex = routine[currentExIdx];
         
-        if (current === 'COUNTDOWN' || current === 'SET_REST' || current === 'LIMB_REST') {
-            if (ex.conc > 0) { goToPhase('CONCENTRIC', ex.conc); return; }
-            current = 'CONCENTRIC';
-        }
-        if (current === 'CONCENTRIC') {
-            if (ex.topP > 0) { goToPhase('TOP_PAUSE', ex.topP); return; }
-            current = 'TOP_PAUSE';
-        }
-        if (current === 'TOP_PAUSE') {
-            if (ex.ecc > 0) { goToPhase('ECCENTRIC', ex.ecc); return; }
-            current = 'ECCENTRIC';
-        }
-        if (current === 'ECCENTRIC') {
-            if (ex.botP > 0) { goToPhase('BOTTOM_PAUSE', ex.botP); return; }
-            current = 'BOTTOM_PAUSE';
-        }
-        if (current === 'BOTTOM_PAUSE') {
-            handleEndRep();
+        if (ex.startWithEccentric) {
+            // FLUSSO ALTERNATIVO: Eccentrica (↓) -> Iso Low -> Concentrica (↑) -> Iso High
+            if (current === 'COUNTDOWN' || current === 'SET_REST' || current === 'LIMB_REST') {
+                if (ex.ecc > 0) { goToPhase('ECCENTRIC', ex.ecc); return; }
+                current = 'ECCENTRIC';
+            }
+            if (current === 'ECCENTRIC') {
+                if (ex.botP > 0) { goToPhase('BOTTOM_PAUSE', ex.botP); return; }
+                current = 'BOTTOM_PAUSE';
+            }
+            if (current === 'BOTTOM_PAUSE') {
+                if (ex.conc > 0) { goToPhase('CONCENTRIC', ex.conc); return; }
+                current = 'CONCENTRIC';
+            }
+            if (current === 'CONCENTRIC') {
+                if (ex.topP > 0) { goToPhase('TOP_PAUSE', ex.topP); return; }
+                current = 'TOP_PAUSE';
+            }
+            if (current === 'TOP_PAUSE') {
+                handleEndRep();
+            }
+        } else {
+            // FLUSSO STANDARD: Concentrica (↑) -> Iso High -> Eccentrica (↓) -> Iso Low
+            if (current === 'COUNTDOWN' || current === 'SET_REST' || current === 'LIMB_REST') {
+                if (ex.conc > 0) { goToPhase('CONCENTRIC', ex.conc); return; }
+                current = 'CONCENTRIC';
+            }
+            if (current === 'CONCENTRIC') {
+                if (ex.topP > 0) { goToPhase('TOP_PAUSE', ex.topP); return; }
+                current = 'TOP_PAUSE';
+            }
+            if (current === 'TOP_PAUSE') {
+                if (ex.ecc > 0) { goToPhase('ECCENTRIC', ex.ecc); return; }
+                current = 'ECCENTRIC';
+            }
+            if (current === 'ECCENTRIC') {
+                if (ex.botP > 0) { goToPhase('BOTTOM_PAUSE', ex.botP); return; }
+                current = 'BOTTOM_PAUSE';
+            }
+            if (current === 'BOTTOM_PAUSE') {
+                handleEndRep();
+            }
         }
     }
 
@@ -881,7 +895,11 @@
         let startBottom = '0%';
 
         switch(currentState) {
-            case 'COUNTDOWN': colorVar = '--color-countdown'; title.textContent = "Prepare"; startBottom = '0%'; break;
+            case 'COUNTDOWN': 
+                colorVar = '--color-countdown'; 
+                title.textContent = "Prepare"; 
+                startBottom = ex.startWithEccentric ? '90%' : '0%'; 
+                break;
             case 'CONCENTRIC': colorVar = '--color-concentric'; title.textContent = "Ascent (Conc)"; startBottom = '0%'; break;
             case 'TOP_PAUSE': colorVar = '--color-pause'; title.textContent = "Iso High"; startBottom = '90%'; break;
             case 'ECCENTRIC': colorVar = '--color-eccentric'; title.textContent = "Descent (Ecc)"; startBottom = '90%'; break;
