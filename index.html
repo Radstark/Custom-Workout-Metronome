@@ -65,7 +65,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
         }
         .global-countdown-box label { font-size: 0.9rem; }
         .global-countdown-box input { width: 80px; text-align: center; padding: 6px; }
@@ -147,9 +147,11 @@
             text-transform: uppercase;
             font-size: 0.95rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            box-sizing: border-box;
         }
-        .add-ex-btn { background-color: #475569; }
-        .start-workout-btn { background-color: var(--success); margin-top: 10px; padding: 16px; font-size: 1.05rem; }
+        .add-ex-btn { background-color: #475569; padding: 12px; font-size: 0.9rem;}
+        .start-workout-btn { background-color: var(--success); margin-top: 5px; padding: 16px; font-size: 1.05rem; }
 
         /* WORKOUT PLAYER */
         .dashboard {
@@ -263,6 +265,7 @@
             .circle-box { width: 180px; height: 180px; }
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
+            .add-ex-btn { padding: 14px; }
             .btn-safe-edit { padding: 12px; margin-top: 12px; }
         }
     </style>
@@ -278,12 +281,11 @@
             <input type="number" id="global-init-countdown" value="10" min="2">
         </div>
 
+        <button class="action-btn add-ex-btn" onclick="addExerciseField('top')">⬆️ Add to Top (Warm-up)</button>
+
         <div id="exercises-list"></div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <button class="action-btn add-ex-btn" onclick="addExerciseField('top')">⬆️ Add to Top</button>
-            <button class="action-btn add-ex-btn" onclick="addExerciseField('bottom')">⬇️ Add to Bottom</button>
-        </div>
+        <button class="action-btn add-ex-btn" onclick="addExerciseField('bottom')">⬇️ Add to Bottom</button>
 
         <button class="action-btn start-workout-btn" onclick="startWorkout()">Start Workout</button>
         <div class="share-box" onclick="copyConfigLink()">🔗 Click here to copy the shareable link of this routine</div>
@@ -523,6 +525,8 @@
         if(globalInput) initialCountdownSeconds = parseInt(globalInput.value) || 10;
         
         const cards = document.querySelectorAll('.exercise-card');
+        if(cards.length === 0) return;
+        
         routine = Array.from(cards).map(card => ({
             name: card.querySelector('.ex-name').value,
             type: card.querySelector('.ex-type').value,
