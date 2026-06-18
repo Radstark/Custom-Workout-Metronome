@@ -79,10 +79,15 @@
             border: 1px solid #334155;
             position: relative;
         }
-        .remove-btn {
+        .card-controls {
             position: absolute;
             top: 12px;
             right: 12px;
+            display: flex;
+            gap: 6px;
+            z-index: 5;
+        }
+        .remove-btn {
             background: #ef4444;
             color: white;
             border: none;
@@ -91,7 +96,20 @@
             cursor: pointer;
             font-size: 0.8rem;
             font-weight: bold;
-            z-index: 5;
+        }
+        .move-btn {
+            background: #475569;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .move-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
         }
         .form-group {
             margin-bottom: 10px;
@@ -261,7 +279,12 @@
         </div>
 
         <div id="exercises-list"></div>
-        <button class="action-btn add-ex-btn" onclick="addExerciseField()">+ Add Exercise</button>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <button class="action-btn add-ex-btn" onclick="addExerciseField('top')">⬆️ Add to Top</button>
+            <button class="action-btn add-ex-btn" onclick="addExerciseField('bottom')">⬇️ Add to Bottom</button>
+        </div>
+
         <button class="action-btn start-workout-btn" onclick="startWorkout()">Start Workout</button>
         <div class="share-box" onclick="copyConfigLink()">🔗 Click here to copy the shareable link of this routine</div>
     </div>
@@ -399,7 +422,11 @@
         const div = document.createElement('div');
         div.className = 'exercise-card';
         div.innerHTML = `
-            <button class="remove-btn" onclick="removeExercise(${idx})">Delete</button>
+            <div class="card-controls">
+                <button class="move-btn" onclick="moveExercise(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                <button class="move-btn" onclick="moveExercise(${idx}, 1)" ${idx === routine.length - 1 ? 'disabled' : ''}>▼</button>
+                <button class="remove-btn" onclick="removeExercise(${idx})">Delete</button>
+            </div>
             <div class="form-group">
                 <label>Exercise Name</label>
                 <input type="text" class="ex-name" value="${ex.name}" onchange="saveStateToURL()">
@@ -457,9 +484,29 @@
         else limbRestGroup.classList.add('hidden');
     }
 
-    function addExerciseField() {
+    function addExerciseField(where = 'bottom') {
         buildRoutineFromDOM();
-        routine.push({ name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60, startWithEccentric: false });
+        const newEx = { name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60, startWithEccentric: false };
+        
+        if (where === 'top') {
+            routine.unshift(newEx);
+        } else {
+            routine.push(newEx);
+        }
+        
+        renderExercisesFromData();
+        saveStateToURL();
+    }
+
+    function moveExercise(idx, direction) {
+        buildRoutineFromDOM(); 
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= routine.length) return;
+        
+        const temp = routine[idx];
+        routine[idx] = routine[targetIdx];
+        routine[targetIdx] = temp;
+        
         renderExercisesFromData();
         saveStateToURL();
     }
@@ -472,7 +519,9 @@
     }
 
     function buildRoutineFromDOM() {
-        initialCountdownSeconds = parseInt(document.getElementById('global-init-countdown').value) || 10;
+        const globalInput = document.getElementById('global-init-countdown');
+        if(globalInput) initialCountdownSeconds = parseInt(globalInput.value) || 10;
+        
         const cards = document.querySelectorAll('.exercise-card');
         routine = Array.from(cards).map(card => ({
             name: card.querySelector('.ex-name').value,
@@ -656,12 +705,10 @@
         launchNextActivePhaseFrom(currentState);
     }
 
-    // GESTORE DINAMICO DEL FLUSSO AUDIO/TEMPORALE
     function launchNextActivePhaseFrom(current) {
         const ex = routine[currentExIdx];
         
         if (ex.startWithEccentric) {
-            // FLUSSO ALTERNATIVO: Eccentrica (↓) -> Iso Low -> Concentrica (↑) -> Iso High
             if (current === 'COUNTDOWN' || current === 'SET_REST' || current === 'LIMB_REST') {
                 if (ex.ecc > 0) { goToPhase('ECCENTRIC', ex.ecc); return; }
                 current = 'ECCENTRIC';
@@ -682,7 +729,6 @@
                 handleEndRep();
             }
         } else {
-            // FLUSSO STANDARD: Concentrica (↑) -> Iso High -> Eccentrica (↓) -> Iso Low
             if (current === 'COUNTDOWN' || current === 'SET_REST' || current === 'LIMB_REST') {
                 if (ex.conc > 0) { goToPhase('CONCENTRIC', ex.conc); return; }
                 current = 'CONCENTRIC';
