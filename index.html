@@ -56,19 +56,24 @@
 
         .hidden { display: none !important; }
 
-        /* GLOBAL COUNTDOWN HEADER */
-        .global-countdown-box {
+        /* GLOBAL CONFIG BOX */
+        .global-config-box {
             background-color: rgba(15, 23, 42, 0.6);
-            padding: 12px 15px;
+            padding: 15px;
             border-radius: 14px;
             border: 1px solid #475569;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 10px;
             margin-bottom: 15px;
         }
-        .global-countdown-box label { font-size: 0.9rem; }
-        .global-countdown-box input { width: 80px; text-align: center; padding: 6px; }
+        .config-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .config-row label { font-size: 0.9rem; }
+        .config-row input { width: 90px; text-align: center; padding: 6px; }
 
         /* ROUTINE BUILDER */
         .setup-mode { display: flex; flex-direction: column; gap: 15px; }
@@ -79,11 +84,15 @@
             border: 1px solid #334155;
             position: relative;
         }
-        .remove-btn {
+        .card-controls {
             position: absolute;
             top: 12px;
             right: 12px;
-            background: #ef4444;
+            display: flex;
+            gap: 5px;
+            z-index: 5;
+        }
+        .card-btn {
             color: white;
             border: none;
             border-radius: 6px;
@@ -91,8 +100,11 @@
             cursor: pointer;
             font-size: 0.8rem;
             font-weight: bold;
-            z-index: 5;
         }
+        .remove-btn { background: #ef4444; }
+        .order-btn { background: #475569; }
+        .order-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
         .form-group {
             margin-bottom: 10px;
             display: flex;
@@ -130,6 +142,11 @@
             font-size: 0.95rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        .builder-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
         .add-ex-btn { background-color: #475569; }
         .start-workout-btn { background-color: var(--success); margin-top: 10px; padding: 16px; font-size: 1.05rem; }
 
@@ -166,7 +183,7 @@
             stroke: var(--color-idle);
             stroke-width: 10;
             stroke-linecap: round;
-            stroke-dasharray: 376.9; /* 2 * PI * 60 */
+            stroke-dasharray: 376.9; 
             stroke-dashoffset: 0;
             transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
         }
@@ -259,9 +276,7 @@
                 height: 170px;
                 transform: rotate(-90deg) scale(1.13);
             }
-            #timer-display {
-                font-size: 3.8rem;
-            }
+            #timer-display { font-size: 3.8rem; }
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
         }
@@ -273,13 +288,24 @@
     <div id="setup-container" class="setup-mode">
         <h1>Routine Setup</h1>
         
-        <div class="global-countdown-box">
-            <label>⏱️ Initial Global Countdown (s)</label>
-            <input type="number" id="global-init-countdown" value="10" min="2">
+        <div class="global-config-box">
+            <div class="config-row">
+                <label>⏱️ Global Init Countdown (s)</label>
+                <input type="number" id="global-init-countdown" value="10" min="2" onchange="saveStateToURL()">
+            </div>
+            <div class="config-row">
+                <label>🎧 BT Latency Compensation (ms)</label>
+                <input type="number" id="bluetooth-latency" value="480" min="0" step="10" onchange="saveStateToURL()">
+            </div>
         </div>
 
         <div id="exercises-list"></div>
-        <button class="action-btn add-ex-btn" onclick="addExerciseField()">+ Add Exercise</button>
+        
+        <div class="builder-buttons">
+            <button class="action-btn add-ex-btn" onclick="addExerciseField('top')">↑ Add Top</button>
+            <button class="action-btn add-ex-btn" onclick="addExerciseField('bottom')">↓ Add Bottom</button>
+        </div>
+        
         <button class="action-btn start-workout-btn" onclick="startWorkout()">Start Workout</button>
         <div class="share-box" onclick="copyConfigLink()">🔗 Click here to copy the shareable link of this routine</div>
     </div>
@@ -331,6 +357,7 @@
     let phaseTotalSeconds = 0;
     let actualReps = 0;
     let initialCountdownSeconds = 10;
+    let bluetoothLatencyMs = 480;
     
     let currentPhaseId = 0;
     let lastPhaseId = -1;
@@ -353,10 +380,12 @@
                 if (parsed.routine) {
                     routine = parsed.routine;
                     initialCountdownSeconds = parsed.globalCountdown || 10;
+                    bluetoothLatencyMs = parsed.bluetoothLatency !== undefined ? parsed.bluetoothLatency : 480;
                 } else {
                     routine = parsed; 
                 }
                 document.getElementById('global-init-countdown').value = initialCountdownSeconds;
+                document.getElementById('bluetooth-latency').value = bluetoothLatencyMs;
                 renderExercisesFromData();
             } catch (e) {
                 console.error("Error decoding URL parameters, loading default.");
@@ -372,6 +401,7 @@
         if(routine.length === 0) return;
         const configObj = {
             globalCountdown: initialCountdownSeconds,
+            bluetoothLatency: bluetoothLatencyMs,
             routine: routine
         };
         const base64Str = btoa(JSON.stringify(configObj));
@@ -388,7 +418,9 @@
     function addDefaultExercise() {
         routine = [{ name: "Bench Press", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 90 }];
         initialCountdownSeconds = 10;
+        bluetoothLatencyMs = 480;
         document.getElementById('global-init-countdown').value = initialCountdownSeconds;
+        document.getElementById('bluetooth-latency').value = bluetoothLatencyMs;
         renderExercisesFromData();
     }
 
@@ -403,8 +435,16 @@
     function createExerciseCard(ex, idx) {
         const div = document.createElement('div');
         div.className = 'exercise-card';
+        
+        const isFirst = idx === 0;
+        const isLast = idx === routine.length - 1;
+
         div.innerHTML = `
-            <button class="remove-btn" onclick="removeExercise(${idx})">Delete</button>
+            <div class="card-controls">
+                <button class="card-btn order-btn" onclick="moveExercise(${idx}, -1)" ${isFirst ? 'disabled' : ''}>▲</button>
+                <button class="card-btn order-btn" onclick="moveExercise(${idx}, 1)" ${isLast ? 'disabled' : ''}>▼</button>
+                <button class="card-btn remove-btn" onclick="removeExercise(${idx})">Delete</button>
+            </div>
             <div class="form-group">
                 <label>Exercise Name</label>
                 <input type="text" class="ex-name" value="${ex.name}" onchange="saveStateToURL()">
@@ -430,20 +470,20 @@
             </div>
 
             <div class="form-grid-4x1">
-                <div class="form-group"><label>Conc (↑)</label><input type="number" class="ex-conc" value="${ex.conc}" min="0"></div>
-                <div class="form-group"><label>Iso High</label><input type="number" class="ex-topP" value="${ex.topP}" min="0"></div>
-                <div class="form-group"><label>Ecc (↓)</label><input type="number" class="ex-ecc" value="${ex.ecc}" min="0"></div>
-                <div class="form-group"><label>Iso Low</label><input type="number" class="ex-botP" value="${ex.botP}" min="0"></div>
+                <div class="form-group"><label>Conc (↑)</label><input type="number" class="ex-conc" value="${ex.conc}" min="0" onchange="saveStateToURL()"></div>
+                <div class="form-group"><label>Iso High</label><input type="number" class="ex-topP" value="${ex.topP}" min="0" onchange="saveStateToURL()"></div>
+                <div class="form-group"><label>Ecc (↓)</label><input type="number" class="ex-ecc" value="${ex.ecc}" min="0" onchange="saveStateToURL()"></div>
+                <div class="form-group"><label>Iso Low</label><input type="number" class="ex-botP" value="${ex.botP}" min="0" onchange="saveStateToURL()"></div>
             </div>
 
             <div class="mobile-split-row">
                 <div class="form-group">
                     <label>Post-Set Rest (s)</label>
-                    <input type="number" class="ex-setRest" value="${ex.setRest}" min="0">
+                    <input type="number" class="ex-setRest" value="${ex.setRest}" min="0" onchange="saveStateToURL()">
                 </div>
                 <div class="form-group class-limb-rest ${ex.type === 'bilateral' ? 'hidden' : ''}">
                     <label>Limb Rest (s)</label>
-                    <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}">
+                    <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}" onchange="saveStateToURL()">
                 </div>
             </div>
         `;
@@ -457,9 +497,16 @@
         else limbRestGroup.classList.add('hidden');
     }
 
-    function addExerciseField() {
+    function addExerciseField(position) {
         buildRoutineFromDOM();
-        routine.push({ name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60 });
+        const newEx = { name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60 };
+        
+        if (position === 'top') {
+            routine.unshift(newEx);
+        } else {
+            routine.push(newEx);
+        }
+        
         renderExercisesFromData();
         saveStateToURL();
     }
@@ -471,8 +518,24 @@
         saveStateToURL();
     }
 
+    function moveExercise(idx, direction) {
+        buildRoutineFromDOM();
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= routine.length) return;
+        
+        // Swap
+        const temp = routine[idx];
+        routine[idx] = routine[targetIdx];
+        routine[targetIdx] = temp;
+        
+        renderExercisesFromData();
+        saveStateToURL();
+    }
+
     function buildRoutineFromDOM() {
         initialCountdownSeconds = parseInt(document.getElementById('global-init-countdown').value) || 10;
+        bluetoothLatencyMs = parseInt(document.getElementById('bluetooth-latency').value) || 0;
+        
         const cards = document.querySelectorAll('.exercise-card');
         routine = Array.from(cards).map(card => ({
             name: card.querySelector('.ex-name').value,
