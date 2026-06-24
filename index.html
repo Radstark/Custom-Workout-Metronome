@@ -65,7 +65,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 5px;
+            margin-bottom: 15px;
         }
         .global-countdown-box label { font-size: 0.9rem; }
         .global-countdown-box input { width: 80px; text-align: center; padding: 6px; }
@@ -79,15 +79,10 @@
             border: 1px solid #334155;
             position: relative;
         }
-        .card-controls {
+        .remove-btn {
             position: absolute;
             top: 12px;
             right: 12px;
-            display: flex;
-            gap: 6px;
-            z-index: 5;
-        }
-        .remove-btn {
             background: #ef4444;
             color: white;
             border: none;
@@ -96,20 +91,7 @@
             cursor: pointer;
             font-size: 0.8rem;
             font-weight: bold;
-        }
-        .move-btn {
-            background: #475569;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        .move-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
+            z-index: 5;
         }
         .form-group {
             margin-bottom: 10px;
@@ -147,11 +129,9 @@
             text-transform: uppercase;
             font-size: 0.95rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            width: 100%;
-            box-sizing: border-box;
         }
-        .add-ex-btn { background-color: #475569; padding: 12px; font-size: 0.9rem;}
-        .start-workout-btn { background-color: var(--success); margin-top: 5px; padding: 16px; font-size: 1.05rem; }
+        .add-ex-btn { background-color: #475569; }
+        .start-workout-btn { background-color: var(--success); margin-top: 10px; padding: 16px; font-size: 1.05rem; }
 
         /* WORKOUT PLAYER */
         .dashboard {
@@ -164,7 +144,6 @@
             margin-bottom: 20px;
             border: 1px solid #334155;
         }
-        
         .circle-box {
             position: relative;
             width: 160px;
@@ -177,19 +156,23 @@
             width: 100%;
             height: 100%;
         }
-        .circle-bg { fill: none; stroke: #1e293b; stroke-width: 8; }
+        .circle-bg { 
+            fill: none; 
+            stroke: #1e293b; 
+            stroke-width: 8; 
+        }
         .circle-progress {
             fill: none;
             stroke: var(--color-idle);
             stroke-width: 10;
             stroke-linecap: round;
-            stroke-dasharray: 376.9;
+            stroke-dasharray: 376.9; /* 2 * PI * 60 */
             stroke-dashoffset: 0;
             transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
         }
         
         #timer-display {
-            font-size: 44px; 
+            font-size: 3.5rem;
             font-weight: 900;
             fill: var(--text-main);
             text-anchor: middle;
@@ -197,13 +180,13 @@
         }
         
         #phase-title {
-            font-size: 11px; 
+            font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
             fill: var(--text-muted);
             letter-spacing: 0.5px;
             text-anchor: middle;
-            dominant-baseline: central;
+            dominant-baseline: middle;
         }
         
         .piston-box { display: flex; flex-direction: column; align-items: center; height: 140px; width: 60px; }
@@ -223,12 +206,11 @@
         .status-row { display: flex; justify-content: space-between; font-size: 0.95rem; }
         .status-row .label { color: var(--text-muted); font-weight: 600; }
         .status-row .val { font-weight: 700; }
-        .history-accent { color: var(--accent); font-weight: 800; letter-spacing: 0.5px; }
         
         .player-controls { display: flex; flex-direction: column; gap: 12px; }
         .controls-row { display: flex; gap: 12px; width: 100%; }
         .controls-row button { flex: 1; }
-        .btn-safe-edit { background-color: #475569; font-size: 0.85rem; padding: 10px; margin-top: 8px; }
+        .btn-danger { background-color: #ef4444; }
         .btn-warning { background-color: var(--color-countdown); }
         .btn-failure { background-color: #f59e0b; color: #0f172a; font-weight: 800; padding: 16px; }
 
@@ -245,7 +227,10 @@
         }
 
         @media (max-width: 480px) {
-            body { padding: 0; background-color: var(--bg-color); }
+            body {
+                padding: 0;
+                background-color: var(--bg-color);
+            }
             .container {
                 border-radius: 0;
                 box-shadow: none;
@@ -261,12 +246,24 @@
                 gap: 10px;
                 margin-bottom: 10px;
             }
-            .form-grid-4x1 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .circle-box { width: 180px; height: 180px; }
+            .form-grid-4x1 {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            .circle-box {
+                width: 180px;
+                height: 180px;
+            }
+            .circle-box svg {
+                width: 170px;
+                height: 170px;
+                transform: rotate(-90deg) scale(1.13);
+            }
+            #timer-display {
+                font-size: 3.8rem;
+            }
             .dashboard { padding: 35px 15px; margin-bottom: 25px; }
             .action-btn { padding: 16px; font-size: 1rem; }
-            .add-ex-btn { padding: 14px; }
-            .btn-safe-edit { padding: 12px; margin-top: 12px; }
         }
     </style>
 </head>
@@ -278,20 +275,11 @@
         
         <div class="global-countdown-box">
             <label>⏱️ Initial Global Countdown (s)</label>
-            <input type="number" id="global-init-countdown" value="10" min="2" onchange="saveStateToURL()">
+            <input type="number" id="global-init-countdown" value="10" min="2">
         </div>
-
-        <div class="global-countdown-box">
-            <label>🎧 Bluetooth Audio Delay (ms)</label>
-            <input type="number" id="bluetooth-delay" value="0" min="0" step="20" onchange="saveStateToURL()">
-        </div>
-
-        <button class="action-btn add-ex-btn" onclick="addExerciseField('top')">⬆️ Add to Top (Warm-up)</button>
 
         <div id="exercises-list"></div>
-        
-        <button class="action-btn add-ex-btn" onclick="addExerciseField('bottom')">⬇️ Add to Bottom</button>
-
+        <button class="action-btn add-ex-btn" onclick="addExerciseField()">+ Add Exercise</button>
         <button class="action-btn start-workout-btn" onclick="startWorkout()">Start Workout</button>
         <div class="share-box" onclick="copyConfigLink()">🔗 Click here to copy the shareable link of this routine</div>
     </div>
@@ -305,7 +293,7 @@
                 <svg viewBox="0 0 150 150" width="100%" height="100%">
                     <circle class="circle-bg" cx="75" cy="75" r="60"></circle>
                     <circle id="progress-ring" class="circle-progress" cx="75" cy="75" r="60" transform="rotate(-90 75 75)"></circle>
-                    <text id="timer-display" x="75" y="75" text-anchor="middle">--</text>
+                    <text id="timer-display" x="75" y="75" dominant-baseline="central" text-anchor="middle">--</text>
                     <text id="phase-title" x="75" y="112" text-anchor="middle">Ready</text>
                 </svg>
             </div>
@@ -319,7 +307,6 @@
             <div class="status-row"><span class="label">Execution Mode:</span><span id="status-mode" class="val">--</span></div>
             <div class="status-row"><span class="label">Active Limb:</span><span id="status-limb" class="val">--</span></div>
             <div class="status-row"><span class="label">Reps Counter:</span><span id="status-reps" class="val">0</span></div>
-            <div id="partial-history-row" class="status-row hidden"><span class="label">Set completed history:</span><span id="status-partial" class="val history-accent">--</span></div>
         </div>
 
         <div class="player-controls">
@@ -327,21 +314,14 @@
             <div class="controls-row">
                 <button id="playBtn" class="action-btn" onclick="toggleEngine()">Play</button>
                 <button id="nextSetBtn" class="action-btn btn-warning hidden" onclick="manualNextSet()">Skip Rest</button>
+                <button class="action-btn btn-danger" onclick="stopWorkout()">Edit Routine</button>
             </div>
-            <button class="action-btn btn-safe-edit" onclick="stopWorkout()">⚙️ Edit Routine</button>
         </div>
-    </div>
-
-    <div id="summary-container" class="hidden setup-mode">
-        <h1>Session Report</h1>
-        <div id="summary-results"></div>
-        <button class="action-btn start-workout-btn" onclick="backToSetup()">Back to Setup</button>
     </div>
 </div>
 
 <script>
     let routine = [];
-    let workoutHistory = []; 
     let currentExIdx = 0;
     let currentSetIdx = 0;
     let currentLimb = 'UNILATERAL_LEFT';
@@ -358,18 +338,13 @@
     let isRunning = false;
     let engineInterval = null;
     let audioCtx = null;
-    let silentAudioLoop = null; 
+    let bluetoothCarrier = null;
 
     const ring = document.getElementById('progress-ring');
     const ringCircumference = 2 * Math.PI * 60;
     ring.style.strokeDasharray = ringCircumference;
 
     function init() {
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.setActionHandler('play', () => { if (!isRunning) toggleEngine(); });
-            navigator.mediaSession.setActionHandler('pause', () => { if (isRunning) toggleEngine(); });
-        }
-
         const urlParams = new URLSearchParams(window.location.search);
         const dataParam = urlParams.get('data');
         if (dataParam) {
@@ -378,7 +353,6 @@
                 if (parsed.routine) {
                     routine = parsed.routine;
                     initialCountdownSeconds = parsed.globalCountdown || 10;
-                    document.getElementById('bluetooth-delay').value = parsed.bluetoothDelay || 0;
                 } else {
                     routine = parsed; 
                 }
@@ -396,12 +370,8 @@
     function saveStateToURL() {
         buildRoutineFromDOM();
         if(routine.length === 0) return;
-        const delayInput = document.getElementById('bluetooth-delay');
-        const bluetoothDelay = delayInput ? parseInt(delayInput.value) || 0 : 0;
-        
         const configObj = {
             globalCountdown: initialCountdownSeconds,
-            bluetoothDelay: bluetoothDelay,
             routine: routine
         };
         const base64Str = btoa(JSON.stringify(configObj));
@@ -416,10 +386,9 @@
     }
 
     function addDefaultExercise() {
-        routine = [{ name: "Bench Press", type: "bilateral", sets: 3, reps: 0, conc: 2, topP: 0, ecc: 3, botP: 1, limbRest: 0, setRest: 90, startWithEccentric: true }];
+        routine = [{ name: "Bench Press", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 90 }];
         initialCountdownSeconds = 10;
         document.getElementById('global-init-countdown').value = initialCountdownSeconds;
-        document.getElementById('bluetooth-delay').value = 0;
         renderExercisesFromData();
     }
 
@@ -435,11 +404,7 @@
         const div = document.createElement('div');
         div.className = 'exercise-card';
         div.innerHTML = `
-            <div class="card-controls">
-                <button class="move-btn" onclick="moveExercise(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
-                <button class="move-btn" onclick="moveExercise(${idx}, 1)" ${idx === routine.length - 1 ? 'disabled' : ''}>▼</button>
-                <button class="remove-btn" onclick="removeExercise(${idx})">Delete</button>
-            </div>
+            <button class="remove-btn" onclick="removeExercise(${idx})">Delete</button>
             <div class="form-group">
                 <label>Exercise Name</label>
                 <input type="text" class="ex-name" value="${ex.name}" onchange="saveStateToURL()">
@@ -451,11 +416,6 @@
                     <option value="bilateral" ${ex.type === 'bilateral' ? 'selected' : ''}>Bilateral (Single Set)</option>
                     <option value="unilateral" ${ex.type === 'unilateral' ? 'selected' : ''}>Unilateral (One side)</option>
                 </select>
-            </div>
-
-            <div class="form-group" style="flex-direction: row; align-items: center; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
-                <input type="checkbox" class="ex-start-ecc" ${ex.startWithEccentric ? 'checked' : ''} onchange="saveStateToURL()" style="width: 18px !important; min-width: 18px; height: 18px; margin: 0; cursor: pointer;">
-                <label style="cursor: pointer; font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Start with Eccentric phase (e.g. Bench, Squat)</label>
             </div>
 
             <div class="mobile-split-row">
@@ -497,29 +457,9 @@
         else limbRestGroup.classList.add('hidden');
     }
 
-    function addExerciseField(where = 'bottom') {
+    function addExerciseField() {
         buildRoutineFromDOM();
-        const newEx = { name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60, startWithEccentric: false };
-        
-        if (where === 'top') {
-            routine.unshift(newEx);
-        } else {
-            routine.push(newEx);
-        }
-        
-        renderExercisesFromData();
-        saveStateToURL();
-    }
-
-    function moveExercise(idx, direction) {
-        buildRoutineFromDOM(); 
-        const targetIdx = idx + direction;
-        if (targetIdx < 0 || targetIdx >= routine.length) return;
-        
-        const temp = routine[idx];
-        routine[idx] = routine[targetIdx];
-        routine[targetIdx] = temp;
-        
+        routine.push({ name: "New Exercise", type: "bilateral", sets: 3, reps: 0, conc: 1, topP: 0, ecc: 2, botP: 0, limbRest: 0, setRest: 60 });
         renderExercisesFromData();
         saveStateToURL();
     }
@@ -532,12 +472,8 @@
     }
 
     function buildRoutineFromDOM() {
-        const globalInput = document.getElementById('global-init-countdown');
-        if(globalInput) initialCountdownSeconds = parseInt(globalInput.value) || 10;
-        
+        initialCountdownSeconds = parseInt(document.getElementById('global-init-countdown').value) || 10;
         const cards = document.querySelectorAll('.exercise-card');
-        if(cards.length === 0) return;
-        
         routine = Array.from(cards).map(card => ({
             name: card.querySelector('.ex-name').value,
             type: card.querySelector('.ex-type').value,
@@ -548,8 +484,7 @@
             ecc: parseInt(card.querySelector('.ex-ecc').value) || 0,
             botP: parseInt(card.querySelector('.ex-botP').value) || 0,
             limbRest: parseInt(card.querySelector('.ex-limbRest')?.value) || 0,
-            setRest: parseInt(card.querySelector('.ex-setRest').value) || 0,
-            startWithEccentric: card.querySelector('.ex-start-ecc').checked
+            setRest: parseInt(card.querySelector('.ex-setRest').value) || 0
         }));
     }
 
@@ -557,21 +492,11 @@
         buildRoutineFromDOM();
         if(routine.length === 0) return alert("Add at least one exercise!");
         
-        const invalidEx = routine.find(ex => ex.conc === 0 && ex.topP === 0 && ex.ecc === 0 && ex.botP === 0);
-        if (invalidEx) return alert(`L'esercizio "${invalidEx.name}" deve avere almeno una fase del tempo maggiore di 0 secondi!`);
-        
         document.getElementById('setup-container').classList.add('hidden');
-        document.getElementById('summary-container').classList.add('hidden');
         document.getElementById('player-container').classList.remove('hidden');
         
         currentExIdx = 0;
         currentSetIdx = 0;
-        
-        workoutHistory = routine.map(ex => ({
-            name: ex.name,
-            type: ex.type,
-            sets: [] 
-        }));
         
         const ex = routine[currentExIdx];
         currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
@@ -587,23 +512,17 @@
     }
 
     function stopWorkout() {
-        if (currentState !== 'NOT_STARTED' && isRunning) {
-            if (!confirm("⚠️ TASTO EDIT PREMUTO: Vuoi davvero interrompere il timer? I dati parziali di questo allenamento andranno persi.")) {
-                return;
-            }
-        }
         clearInterval(engineInterval);
         isRunning = false;
-        if(silentAudioLoop) silentAudioLoop.pause();
-        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+        
+        stopBluetoothCarrier();
+        
         document.getElementById('playBtn').innerText = 'Play';
         document.getElementById('playBtn').classList.remove('hidden');
         document.getElementById('nextSetBtn').classList.add('hidden');
         document.getElementById('failureBtn').classList.add('hidden');
         document.getElementById('player-container').classList.add('hidden');
-        document.getElementById('summary-container').classList.add('hidden');
         document.getElementById('setup-container').classList.remove('hidden');
-        currentState = 'NOT_STARTED';
     }
 
     function initAudio() {
@@ -611,16 +530,46 @@
         if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
+    function startBluetoothCarrier() {
+        if (bluetoothCarrier) return;
+        initAudio();
+        
+        bluetoothCarrier = audioCtx.createOscillator();
+        const carrierGain = audioCtx.createGain();
+        
+        bluetoothCarrier.type = 'sine';
+        bluetoothCarrier.frequency.setValueAtTime(10, audioCtx.currentTime);
+        carrierGain.gain.setValueAtTime(0.005, audioCtx.currentTime);
+        
+        bluetoothCarrier.connect(carrierGain);
+        carrierGain.connect(audioCtx.destination);
+        bluetoothCarrier.start();
+    }
+
+    function stopBluetoothCarrier() {
+        if (bluetoothCarrier) {
+            try {
+                bluetoothCarrier.stop();
+            } catch(e) {}
+            bluetoothCarrier = null;
+        }
+    }
+
     function shouldPlayRestTick(sec) {
         if (sec <= 10 && sec >= 0) return true;
         if (sec === 15) return true;
-        if (sec <= 120 && sec >= 30) return (sec % 30 === 0);
-        if (sec > 120) return (sec % 60 === 0);
+        if (sec <= 120 && sec >= 30) {
+            return (sec % 30 === 0);
+        }
+        if (sec > 120) {
+            return (sec % 60 === 0);
+        }
         return false;
     }
 
     function playTick(state) {
         initAudio();
+        
         if (state === 'LIMB_REST' || state === 'SET_REST') {
             if (!shouldPlayRestTick(currentSecondsRemaining)) return;
         }
@@ -650,47 +599,16 @@
             clearInterval(engineInterval);
             isRunning = false;
             btn.innerText = 'Play';
-            if (silentAudioLoop) silentAudioLoop.pause();
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+            
+            stopBluetoothCarrier();
+            
             updatePlayerUI(false); 
         } else {
             isRunning = true;
             btn.innerText = 'Stop';
-
-            if (!silentAudioLoop) {
-                silentAudioLoop = document.createElement('audio');
-                
-                const sampleRate = 8000;
-                const numChannels = 1;
-                const bitsPerSample = 16;
-                const numSamples = sampleRate * 2; 
-                const dataSize = numSamples * numChannels * (bitsPerSample / 8);
-                const buffer = new ArrayBuffer(44 + dataSize);
-                const view = new DataView(buffer);
-                
-                view.setUint32(0, 0x52494646, false); 
-                view.setUint32(4, 36 + dataSize, true);
-                view.setUint32(8, 0x57415645, false); 
-                view.setUint32(12, 0x666d7420, false); 
-                view.setUint32(16, 16, true);
-                view.setUint16(20, 1, true);
-                view.setUint16(22, numChannels, true);
-                view.setUint32(24, sampleRate, true);
-                view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
-                view.setUint16(32, numChannels * (bitsPerSample / 8), true);
-                view.setUint16(34, bitsPerSample, true);
-                view.setUint32(36, 0x64617461, false); 
-                view.setUint32(40, dataSize, true);
-                
-                const blob = new Blob([view], { type: 'audio/wav' });
-                silentAudioLoop.src = URL.createObjectURL(blob);
-                silentAudioLoop.loop = true;
-            }
-
-            silentAudioLoop.play().then(() => {
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-            }).catch(err => console.log("MediaSession sync blocked:", err));
-
+            
+            startBluetoothCarrier();
+            
             tick();
             engineInterval = setInterval(tick, 1000);
         }
@@ -705,85 +623,35 @@
         lastPhaseId = currentPhaseId;
 
         playTick(currentState);
-
-        const delayInput = document.getElementById('bluetooth-delay');
-        const delay = delayInput ? parseInt(delayInput.value) || 0 : 0;
-
-        if (delay > 0) {
-            setTimeout(() => {
-                updatePlayerUI(phaseChanged);
-                currentSecondsRemaining--;
-            }, delay);
-        } else {
-            updatePlayerUI(phaseChanged);
-            currentSecondsRemaining--;
-        }
-    }
-
-    function goToPhase(phase, seconds) {
-        currentState = phase;
-        phaseTotalSeconds = seconds;
-        currentSecondsRemaining = seconds;
-        currentPhaseId++;
+        updatePlayerUI(phaseChanged);
+        currentSecondsRemaining--;
     }
 
     function advanceStateLogic() {
-        launchNextActivePhaseFrom(currentState);
-    }
-
-    function launchNextActivePhaseFrom(current) {
         const ex = routine[currentExIdx];
-        
-        if (ex.startWithEccentric) {
-            if (current === 'COUNTDOWN' || current === 'SET_REST' || current === 'LIMB_REST') {
-                if (ex.ecc > 0) { goToPhase('ECCENTRIC', ex.ecc); return; }
-                current = 'ECCENTRIC';
-            }
-            if (current === 'ECCENTRIC') {
-                if (ex.botP > 0) { goToPhase('BOTTOM_PAUSE', ex.botP); return; }
-                current = 'BOTTOM_PAUSE';
-            }
-            if (current === 'BOTTOM_PAUSE') {
-                if (ex.conc > 0) { goToPhase('CONCENTRIC', ex.conc); return; }
-                current = 'CONCENTRIC';
-            }
-            if (current === 'CONCENTRIC') {
-                if (ex.topP > 0) { goToPhase('TOP_PAUSE', ex.topP); return; }
-                current = 'TOP_PAUSE';
-            }
-            if (current === 'TOP_PAUSE') {
-                handleEndRep();
-            }
-        } else {
-            if (current === 'COUNTDOWN' || current === 'SET_REST' || current === 'LIMB_REST') {
-                if (ex.conc > 0) { goToPhase('CONCENTRIC', ex.conc); return; }
-                current = 'CONCENTRIC';
-            }
-            if (current === 'CONCENTRIC') {
-                if (ex.topP > 0) { goToPhase('TOP_PAUSE', ex.topP); return; }
-                current = 'TOP_PAUSE';
-            }
-            if (current === 'TOP_PAUSE') {
-                if (ex.ecc > 0) { goToPhase('ECCENTRIC', ex.ecc); return; }
-                current = 'ECCENTRIC';
-            }
-            if (current === 'ECCENTRIC') {
-                if (ex.botP > 0) { goToPhase('BOTTOM_PAUSE', ex.botP); return; }
-                current = 'BOTTOM_PAUSE';
-            }
-            if (current === 'BOTTOM_PAUSE') {
-                handleEndRep();
-            }
+
+        if (currentState === 'COUNTDOWN') { goToPhase('CONCENTRIC', ex.conc); return; }
+        if (currentState === 'CONCENTRIC') { goToPhase(ex.topP > 0 ? 'TOP_PAUSE' : 'ECCENTRIC', ex.topP > 0 ? ex.topP : ex.ecc); return; }
+        if (currentState === 'TOP_PAUSE') { goToPhase('ECCENTRIC', ex.ecc); return; }
+        if (currentState === 'ECCENTRIC') {
+            goToPhase(ex.botP > 0 ? 'BOTTOM_PAUSE' : 'END_REP_CHECK', ex.botP > 0 ? ex.botP : 0);
+            if (ex.botP === 0) handleEndRep();
+            return;
         }
-    }
+        if (currentState === 'BOTTOM_PAUSE') { handleEndRep(); return; }
+        
+        if (currentState === 'SET_REST' || currentState === 'LIMB_REST') {
+            goToPhase('CONCENTRIC', ex.conc);
+            return;
+        }
 
-    function handleEndRep() {
-        const ex = routine[currentExIdx];
-        actualReps++;
-        if (ex.reps > 0 && actualReps >= ex.reps) {
-            closeActiveLimbOrSet();
-        } else {
-            launchNextActivePhaseFrom('COUNTDOWN'); 
+        function handleEndRep() {
+            actualReps++;
+            if (ex.reps > 0 && actualReps >= ex.reps) {
+                closeActiveLimbOrSet();
+            } else {
+                goToPhase('CONCENTRIC', ex.conc);
+            }
         }
     }
 
@@ -797,59 +665,60 @@
 
     function closeActiveLimbOrSet() {
         const ex = routine[currentExIdx];
-        
-        if (ex.type === 'unilateral') {
-            if (!workoutHistory[currentExIdx].sets[currentSetIdx]) {
-                workoutHistory[currentExIdx].sets[currentSetIdx] = { L: 0, R: 0 };
-            }
-            
-            if (currentLimb === 'UNILATERAL_LEFT') {
-                workoutHistory[currentExIdx].sets[currentSetIdx].L = actualReps;
-                currentLimb = 'UNILATERAL_RIGHT';
-                actualReps = 0; 
-                if (ex.limbRest > 0) {
-                    goToPhase('LIMB_REST', ex.limbRest);
-                } else {
-                    launchNextActivePhaseFrom('COUNTDOWN');
-                }
-                return; 
+        if (currentLimb === 'UNILATERAL_LEFT') {
+            currentLimb = 'UNILATERAL_RIGHT';
+            actualReps = 0;
+            if (ex.limbRest > 0) {
+                goToPhase('LIMB_REST', ex.limbRest);
             } else {
-                workoutHistory[currentExIdx].sets[currentSetIdx].R = actualReps;
+                goToPhase('CONCENTRIC', ex.conc); 
             }
         } else {
-            workoutHistory[currentExIdx].sets[currentSetIdx] = actualReps;
+            currentSetIdx++;
+            if (currentSetIdx < ex.sets) {
+                if (ex.setRest > 0) goToPhase('SET_REST', ex.setRest);
+                else startNextSetDirectly();
+            } else {
+                currentExIdx++;
+                if (currentExIdx < routine.length) {
+                    currentSetIdx = 0;
+                    const nextEx = routine[currentExIdx];
+                    currentLimb = (nextEx.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
+                    actualReps = 0;
+                    
+                    if (ex.setRest > 0) {
+                        goToPhase('SET_REST', ex.setRest); 
+                    } else {
+                        startNextSetDirectly();
+                    }
+                } else {
+                    clearInterval(engineInterval);
+                    isRunning = false;
+                    alert("🏆 CONGRATULATIONS! You have completed your workout session.");
+                    stopWorkout();
+                }
+            }
         }
+    }
 
-        currentSetIdx++;
-        actualReps = 0; 
-        
-        if (currentSetIdx < ex.sets) {
-            currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
-            if (ex.setRest > 0) {
-                goToPhase('SET_REST', ex.setRest);
-            } else {
-                launchNextActivePhaseFrom('COUNTDOWN');
-            }
-        } else {
-            currentExIdx++;
-            if (currentExIdx < routine.length) {
-                currentSetIdx = 0;
-                const nextEx = routine[currentExIdx];
-                currentLimb = (nextEx.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
-                
-                if (ex.setRest > 0) {
-                    goToPhase('SET_REST', ex.setRest);
-                } else {
-                    launchNextActivePhaseFrom('COUNTDOWN');
-                }
-            } else {
-                clearInterval(engineInterval);
-                isRunning = false;
-                if(silentAudioLoop) silentAudioLoop.pause();
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-                showWorkoutSummary();
-            }
+    function goToPhase(nextState, duration) {
+        if (nextState === 'END_REP_CHECK') return; 
+
+        currentState = nextState;
+        phaseTotalSeconds = duration;
+        currentSecondsRemaining = phaseTotalSeconds;
+        currentPhaseId++; 
+
+        if (duration === 0 && (currentState === 'CONCENTRIC' || currentState === 'TOP_PAUSE' || currentState === 'ECCENTRIC' || currentState === 'BOTTOM_PAUSE')) {
+            advanceStateLogic();
         }
+    }
+
+    function startNextSetDirectly() {
+        const ex = routine[currentExIdx];
+        currentLimb = (ex.type === 'unilateral') ? 'UNILATERAL_LEFT' : 'BILATERAL';
+        actualReps = 0;
+        goToPhase('CONCENTRIC', ex.conc);
     }
 
     function manualNextSet() {
@@ -857,45 +726,6 @@
             currentSecondsRemaining = 0;
             advanceStateLogic();
         }
-    }
-
-    function showWorkoutSummary() {
-        document.getElementById('player-container').classList.add('hidden');
-        const summaryContainer = document.getElementById('summary-container');
-        summaryContainer.classList.remove('hidden');
-        
-        const resultsDiv = document.getElementById('summary-results');
-        resultsDiv.innerHTML = '';
-        
-        workoutHistory.forEach(ex => {
-            const row = document.createElement('div');
-            row.className = 'status-panel';
-            row.style.marginBottom = '15px';
-            row.style.padding = '14px';
-            
-            let repsText = '';
-            if (ex.type === 'unilateral') {
-                repsText = ex.sets.map(set => set ? `${set.L}/${set.R}` : '-/-').join('  |  ');
-            } else {
-                repsText = ex.sets.map(set => set !== undefined ? set : '-').join('  -  ');
-            }
-            
-            row.innerHTML = `
-                <div class="status-row" style="font-size: 1.05rem; margin-bottom: 6px;">
-                    <span class="label" style="color: var(--text-main); font-weight: 700;">${ex.name}</span>
-                    <span class="val" style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">${ex.type}</span>
-                </div>
-                <div class="status-row">
-                    <span class="val" style="color: var(--accent); font-size: 1.2rem; font-weight: 800; letter-spacing:0.5px;">${repsText || 'No sets recorded'}</span>
-                </div>
-            `;
-            resultsDiv.appendChild(row);
-        });
-    }
-
-    function backToSetup() {
-        document.getElementById('summary-container').classList.add('hidden');
-        document.getElementById('setup-container').classList.remove('hidden');
     }
 
     function updatePlayerUI(phaseChanged) {
@@ -913,33 +743,6 @@
         if(currentLimb === 'UNILATERAL_LEFT') limbText = "Left Limb / 1st";
         if(currentLimb === 'UNILATERAL_RIGHT') limbText = "Right Limb / 2nd";
         document.getElementById('status-limb').innerText = limbText;
-
-        const partialRow = document.getElementById('partial-history-row');
-        const partialStatus = document.getElementById('status-partial');
-        if (currentState === 'SET_REST' || currentState === 'LIMB_REST') {
-            partialRow.classList.remove('hidden');
-            let histEx = workoutHistory[currentExIdx];
-            if (histEx && histEx.sets.length > 0) {
-                if (histEx.type === 'unilateral') {
-                    partialStatus.innerText = histEx.sets.map(s => s ? `${s.L}/${s.R}` : '-/-').join(' | ');
-                } else {
-                    partialStatus.innerText = histEx.sets.map(s => s !== undefined ? s : '-').join(' - ');
-                }
-            } else {
-                partialStatus.innerText = 'No sets tracked yet';
-            }
-        } else {
-            partialRow.classList.add('hidden');
-        }
-
-        if ('mediaSession' in navigator) {
-            let statusLabel = (currentState === 'SET_REST' || currentState === 'LIMB_REST') ? 'Resting Phase' : 'Repetition Cycle';
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: `${ex.name} (Set ${currentSetIdx + 1}/${ex.sets})`,
-                artist: statusLabel,
-                album: 'Tempo Metronome'
-            });
-        }
 
         const failureBtn = document.getElementById('failureBtn');
         const nextSetBtn = document.getElementById('nextSetBtn');
@@ -961,23 +764,19 @@
         const title = document.getElementById('phase-title');
         const piston = document.getElementById('piston-weight');
 
-        display.textContent = currentSecondsRemaining;
+        display.innerText = currentSecondsRemaining;
 
         let colorVar = '--color-idle';
         let startBottom = '0%';
 
         switch(currentState) {
-            case 'COUNTDOWN': 
-                colorVar = '--color-countdown'; 
-                title.textContent = "Prepare"; 
-                startBottom = ex.startWithEccentric ? '90%' : '0%'; 
-                break;
-            case 'CONCENTRIC': colorVar = '--color-concentric'; title.textContent = "Ascent (Conc)"; startBottom = '0%'; break;
-            case 'TOP_PAUSE': colorVar = '--color-pause'; title.textContent = "Iso High"; startBottom = '90%'; break;
-            case 'ECCENTRIC': colorVar = '--color-eccentric'; title.textContent = "Descent (Ecc)"; startBottom = '90%'; break;
-            case 'BOTTOM_PAUSE': colorVar = '--color-pause'; title.textContent = "Iso Low"; startBottom = '0%'; break;
-            case 'LIMB_REST': colorVar = '--color-rest'; title.textContent = "Limb Switch"; startBottom = '0%'; break;
-            case 'SET_REST': colorVar = '--color-rest'; title.textContent = "Set Rest"; startBottom = '0%'; break;
+            case 'COUNTDOWN': colorVar = '--color-countdown'; title.innerText = "Prepare"; startBottom = '0%'; break;
+            case 'CONCENTRIC': colorVar = '--color-concentric'; title.innerText = "Ascent (Conc)"; startBottom = '0%'; break;
+            case 'TOP_PAUSE': colorVar = '--color-pause'; title.innerText = "Iso High"; startBottom = '90%'; break;
+            case 'ECCENTRIC': colorVar = '--color-eccentric'; title.innerText = "Descent (Ecc)"; startBottom = '90%'; break;
+            case 'BOTTOM_PAUSE': colorVar = '--color-pause'; title.innerText = "Iso Low"; startBottom = '0%'; break;
+            case 'LIMB_REST': colorVar = '--color-rest'; title.innerText = "Limb Switch"; startBottom = '0%'; break;
+            case 'SET_REST': colorVar = '--color-rest'; title.innerText = "Set Rest"; startBottom = '0%'; break;
         }
 
         if (phaseChanged) {
