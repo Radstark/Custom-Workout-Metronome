@@ -185,7 +185,7 @@
             stroke-linecap: round;
             stroke-dasharray: 376.9;
             stroke-dashoffset: 0;
-            transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+            transition: stroke-dashoffset 0.5s linear, stroke 0.3s ease;
         }
         
         #timer-display {
@@ -208,7 +208,7 @@
         
         .piston-box { display: flex; flex-direction: column; align-items: center; height: 140px; width: 60px; }
         .piston-track { width: 14px; height: 110px; background: #1e293b; border-radius: 6px; position: relative; border: 1px solid #334155; }
-        .piston-weight { width: 32px; height: 16px; background: var(--color-idle); border-radius: 4px; position: absolute; left: -9px; bottom: 0%; transition: bottom 1s linear, background 0.3s ease; }
+        .piston-weight { width: 32px; height: 16px; background: var(--color-idle); border-radius: 4px; position: absolute; left: -9px; bottom: 0%; transition: bottom 0.5s linear, background 0.3s ease; }
         
         .status-panel {
             background: rgba(15, 23, 42, 0.4);
@@ -278,7 +278,7 @@
         
         <div class="global-countdown-box">
             <label>⏱️ Initial Global Countdown (s)</label>
-            <input type="number" id="global-init-countdown" value="10" min="2" onchange="saveStateToURL()">
+            <input type="number" id="global-init-countdown" value="10" min="1" step="0.5" onchange="saveStateToURL()">
         </div>
 
         <div class="global-countdown-box">
@@ -378,7 +378,7 @@
                 const parsed = JSON.parse(atob(decodeURIComponent(dataParam)));
                 if (parsed.routine) {
                     routine = parsed.routine;
-                    initialCountdownSeconds = parsed.globalCountdown || 10;
+                    initialCountdownSeconds = parseFloat(parsed.globalCountdown) || 10;
                     document.getElementById('bluetooth-delay').value = parsed.bluetoothDelay || 0;
                 } else {
                     routine = parsed; 
@@ -471,20 +471,20 @@
             </div>
 
             <div class="form-grid-4x1">
-                <div class="form-group"><label>Conc (↑)</label><input type="number" class="ex-conc" value="${ex.conc}" min="0"></div>
-                <div class="form-group"><label>Iso High</label><input type="number" class="ex-topP" value="${ex.topP}" min="0"></div>
-                <div class="form-group"><label>Ecc (↓)</label><input type="number" class="ex-ecc" value="${ex.ecc}" min="0"></div>
-                <div class="form-group"><label>Iso Low</label><input type="number" class="ex-botP" value="${ex.botP}" min="0"></div>
+                <div class="form-group"><label>Conc (↑)</label><input type="number" class="ex-conc" value="${ex.conc}" min="0" step="0.5"></div>
+                <div class="form-group"><label>Iso High</label><input type="number" class="ex-topP" value="${ex.topP}" min="0" step="0.5"></div>
+                <div class="form-group"><label>Ecc (↓)</label><input type="number" class="ex-ecc" value="${ex.ecc}" min="0" step="0.5"></div>
+                <div class="form-group"><label>Iso Low</label><input type="number" class="ex-botP" value="${ex.botP}" min="0" step="0.5"></div>
             </div>
 
             <div class="mobile-split-row">
                 <div class="form-group">
                     <label>Post-Set Rest (s)</label>
-                    <input type="number" class="ex-setRest" value="${ex.setRest}" min="0">
+                    <input type="number" class="ex-setRest" value="${ex.setRest}" min="0" step="0.5">
                 </div>
                 <div class="form-group class-limb-rest ${ex.type === 'bilateral' ? 'hidden' : ''}">
                     <label>Limb Rest (s)</label>
-                    <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}">
+                    <input type="number" class="ex-limbRest" value="${ex.limbRest || 0}" min="0" step="0.5">
                 </div>
             </div>
         `;
@@ -534,7 +534,7 @@
 
     function buildRoutineFromDOM() {
         const globalInput = document.getElementById('global-init-countdown');
-        if(globalInput) initialCountdownSeconds = parseInt(globalInput.value) || 10;
+        if(globalInput) initialCountdownSeconds = parseFloat(globalInput.value) || 10;
         
         const cards = document.querySelectorAll('.exercise-card');
         if(cards.length === 0) return;
@@ -544,12 +544,12 @@
             type: card.querySelector('.ex-type').value,
             sets: parseInt(card.querySelector('.ex-sets').value) || 1,
             reps: parseInt(card.querySelector('.ex-reps').value) === 0 ? 0 : (parseInt(card.querySelector('.ex-reps').value) || 0),
-            conc: parseInt(card.querySelector('.ex-conc').value) || 0,
-            topP: parseInt(card.querySelector('.ex-topP').value) || 0,
-            ecc: parseInt(card.querySelector('.ex-ecc').value) || 0,
-            botP: parseInt(card.querySelector('.ex-botP').value) || 0,
-            limbRest: parseInt(card.querySelector('.ex-limbRest')?.value) || 0,
-            setRest: parseInt(card.querySelector('.ex-setRest').value) || 0,
+            conc: parseFloat(card.querySelector('.ex-conc').value) || 0,
+            topP: parseFloat(card.querySelector('.ex-topP').value) || 0,
+            ecc: parseFloat(card.querySelector('.ex-ecc').value) || 0,
+            botP: parseFloat(card.querySelector('.ex-botP').value) || 0,
+            limbRest: parseFloat(card.querySelector('.ex-limbRest')?.value) || 0,
+            setRest: parseFloat(card.querySelector('.ex-setRest').value) || 0,
             startWithEccentric: card.querySelector('.ex-start-ecc').checked
         }));
     }
@@ -621,7 +621,7 @@
         const carrierGain = audioCtx.createGain();
         
         bluetoothCarrier.type = 'sine';
-        bluetoothCarrier.frequency.setValueAtTime(10, audioCtx.currentTime); // 10Hz Inudibile
+        bluetoothCarrier.frequency.setValueAtTime(10, audioCtx.currentTime); 
         carrierGain.gain.setValueAtTime(0.005, audioCtx.currentTime); 
         
         bluetoothCarrier.connect(carrierGain);
@@ -721,7 +721,7 @@
 
             startBluetoothCarrier();
             tick();
-            engineInterval = setInterval(tick, 1000);
+            engineInterval = setInterval(tick, 500);
         }
     }
 
@@ -741,11 +741,11 @@
         if (delay > 0) {
             setTimeout(() => {
                 updatePlayerUI(phaseChanged);
-                currentSecondsRemaining--;
+                currentSecondsRemaining = +(currentSecondsRemaining - 0.5).toFixed(1);
             }, delay);
         } else {
             updatePlayerUI(phaseChanged);
-            currentSecondsRemaining--;
+            currentSecondsRemaining = +(currentSecondsRemaining - 0.5).toFixed(1);
         }
     }
 
@@ -1022,15 +1022,15 @@
             void piston.offsetHeight;
         
             if (isRunning) {
-                ring.style.transition = 'stroke-dashoffset 1s linear, stroke 0.3s ease';
-                piston.style.transition = 'bottom 1s linear, background 0.3s ease';
+                ring.style.transition = 'stroke-dashoffset 0.5s linear, stroke 0.3s ease';
+                piston.style.transition = 'bottom 0.5s linear, background 0.3s ease';
             }
         } else {
             ring.style.stroke = `var(${colorVar})`;
             piston.style.background = `var(${colorVar})`;
         }
 
-        let targetSeconds = isRunning ? (currentSecondsRemaining - 1) : currentSecondsRemaining;
+        let targetSeconds = isRunning ? +(currentSecondsRemaining - 0.5).toFixed(1) : currentSecondsRemaining;
         let targetPct = phaseTotalSeconds > 0 ? (targetSeconds / phaseTotalSeconds) : 0;
         ring.style.strokeDashoffset = ringCircumference * (1 - targetPct);
 
