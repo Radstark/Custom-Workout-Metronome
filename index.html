@@ -647,13 +647,10 @@
     }
 
     function playTick(state, phaseChanged) {
-        // Suona solo se siamo su un secondo intero OPPURE se è appena cambiata la fase (forzatura inizio fase)
-        let isWholeSecond = (currentSecondsRemaining % 1 === 0);
-        if (!phaseChanged && !isWholeSecond) return;
+        // Se non è l'inizio esatto di una fase e non siamo su un secondo intero, skippa il suono
+        if (!phaseChanged && currentSecondsRemaining % 1 !== 0) return;
 
         initAudio();
-        
-        // Se siamo in recupero, applichiamo i filtri macro (es. ogni 30s), a meno che non sia l'inizio esatto della fase
         if (state === 'LIMB_REST' || state === 'SET_REST') {
             if (!phaseChanged && !shouldPlayRestTick(currentSecondsRemaining)) return;
         }
@@ -706,7 +703,7 @@
                 view.setUint32(4, 36 + dataSize, true);
                 view.setUint32(8, 0x57415645, false); 
                 view.setUint32(12, 0x666d7420, false); 
-                view.setUint16(16, 16, true);
+                view.setUint32(16, 16, true);
                 view.setUint16(20, 1, true);
                 view.setUint16(22, numChannels, true);
                 view.setUint32(24, sampleRate, true);
@@ -739,7 +736,7 @@
         let phaseChanged = (currentPhaseId !== lastPhaseId);
         lastPhaseId = currentPhaseId;
 
-        // Passiamo phaseChanged a playTick per gestire correttamente la forzatura dello start-fase
+        // Adesso passiamo la variabile corretta e playTick filtrerà i mezzi secondi
         playTick(currentState, phaseChanged);
 
         const delayInput = document.getElementById('bluetooth-delay');
@@ -998,7 +995,7 @@
         const title = document.getElementById('phase-title');
         const piston = document.getElementById('piston-weight');
 
-        display.textContent = currentSecondsRemaining;
+        display.textContent = Math.ceil(currentSecondsRemaining);
 
         let colorVar = '--color-idle';
         let startBottom = '0%';
